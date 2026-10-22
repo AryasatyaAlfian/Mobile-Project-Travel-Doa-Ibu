@@ -7,6 +7,12 @@ class TravelApi {
 
   final ApiClient client;
 
+  /// Profil pengguna yang sedang login saat ini (static agar tidak pernah hilang saat rebuild/navigasi)
+  static AppUser? currentUser;
+
+  AppUser? get user => currentUser;
+  set user(AppUser? val) => currentUser = val;
+
   // ---- Konten publik ----
 
   Future<Map<String, dynamic>> settings() async =>
@@ -69,12 +75,50 @@ class TravelApi {
       'device_name': 'mobile_project_doa_ibu',
     });
     client.token = json['token'] as String;
-    return AppUser.fromJson(json['user'] as Map<String, dynamic>);
+    final user = AppUser.fromJson(json['user'] as Map<String, dynamic>);
+    currentUser = user;
+    return user;
+  }
+
+  Future<AppUser> register({
+    required String name,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+    String? phone,
+  }) async {
+    final json = await client.post('/auth/register', {
+      'name': name,
+      'email': email,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+      'device_name': 'mobile_project_doa_ibu',
+    });
+    client.token = json['token'] as String;
+    final user = AppUser.fromJson(json['user'] as Map<String, dynamic>);
+    currentUser = user;
+    return user;
   }
 
   Future<void> logout() async {
     await client.post('/auth/logout');
     client.token = null;
+    currentUser = null;
+  }
+
+  /// Memuat profil user terbaru dari `/auth/me`
+  Future<AppUser?> me() async {
+    if (client.token == null) return currentUser;
+    try {
+      final json = await client.get('/auth/me');
+      final userMap = (json['data'] ?? json['user']) as Map<String, dynamic>;
+      final user = AppUser.fromJson(userMap);
+      currentUser = user;
+      return user;
+    } catch (_) {
+      return currentUser;
+    }
   }
 
   // ---- Admin ----
