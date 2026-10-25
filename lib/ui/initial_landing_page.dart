@@ -3,338 +3,399 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/models.dart';
 import '../services/travel_api.dart';
+import 'login_page.dart';
+import 'register_page.dart';
 
-/// Elysian Horizon — Initial Landing Page (Layar Pembuka 1)
-/// 100% Presisi sesuai prototipe Figma "prototype landing page" (Gambar 1):
-/// - Menampilkan Kaaba 3D & Menara Masjid dengan latar langit biru
-/// - Judul: "Percayakan Pada yang Terpercaya"
-/// - Subjudul: "Bepergian Dengan Nyaman, Aman dan Tanpa Rasa Khawatir"
-/// - Tombol: "START" yang mengarahkan ke Welcome Landing Page (Gambar 2)
+/// Elysian Horizon — Initial Landing Page (Layar Pembuka)
+///
+/// Porting 1:1 dari desain frontend Figma berukuran 414 x 896.
+/// Seluruh elemen diposisikan absolut memakai koordinat asli desain,
+/// lalu diskalakan mengikuti lebar layar (sama seperti transform: scale()
+/// pada versi HTML). Tidak ada animasi.
 class InitialLandingPage extends StatefulWidget {
   const InitialLandingPage({
     super.key,
     required this.onStart,
     this.api,
+    this.onAuthenticated,
   });
 
+  /// Dipanggil saat pengguna melanjutkan tanpa autentikasi langsung.
   final VoidCallback onStart;
+
+  /// Dipanggil setelah login berhasil (opsional, fallback ke [onStart]).
+  final VoidCallback? onAuthenticated;
+
   final TravelApi? api;
 
   @override
   State<InitialLandingPage> createState() => _InitialLandingPageState();
 }
 
-class _InitialLandingPageState extends State<InitialLandingPage>
-    with SingleTickerProviderStateMixin {
+class _InitialLandingPageState extends State<InitialLandingPage> {
   late Future<Paginated<TravelPackage>>? _packagesFuture;
 
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<Offset> _slideTextAnimation;
-  late final Animation<Offset> _slideButtonAnimation;
+  /// Ukuran artboard desain asli.
+  static const double _designWidth = 414;
+  static const double _designHeight = 896;
 
-  bool _isPressed = false;
+  // Palet sesuai variabel CSS desain.
+  static const Color _gold = Color(0xFFECC485); // --gold
+  static const Color _btn = Color(0xFFF5FAFE); // --btn
+  static const Color _ink = Color(0xFF1F1F1F); // --ink
 
   @override
   void initState() {
     super.initState();
     _packagesFuture = widget.api?.packages();
-
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-    );
-
-    _slideTextAnimation = Tween<Offset>(
-      begin: const Offset(0.15, -0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: const Interval(0.1, 0.7, curve: Curves.easeOutCubic),
-    ));
-
-    _slideButtonAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.35),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: const Interval(0.4, 0.95, curve: Curves.easeOutCubic),
-    ));
-
-    _animController.forward();
   }
 
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
+  PageRouteBuilder<void> _createRoute(Widget page) {
+    return PageRouteBuilder<void>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    );
+  }
+
+  void _handleLogin() {
+    final api = widget.api;
+    if (api == null) {
+      widget.onStart();
+      return;
+    }
+
+    Navigator.push(
+      context,
+      _createRoute(
+        LoginPage(
+          api: api,
+          onLoginSuccess: widget.onAuthenticated ?? widget.onStart,
+        ),
+      ),
+    );
+  }
+
+  void _handleRegister() {
+    final api = widget.api;
+    if (api == null) {
+      widget.onStart();
+      return;
+    }
+
+    Navigator.push(
+      context,
+      _createRoute(
+        RegisterPage(
+          api: api,
+          onRegisterSuccess: () {
+            Navigator.pop(context);
+            _handleLogin();
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4899D0),
-      body: LayoutBuilder(
-        builder: (context, screenConstraints) {
-          final isWide = screenConstraints.maxWidth > 500;
-
-          Widget content = Stack(
-            fit: StackFit.expand,
-            children: [
-              // 1. Gambar Hero: Kaaba 3D & Menara Masjid Nabawi / Masjidil Haram
-              _buildHeroBackground(),
-
-              // 2. Konten Teks dan Tombol START (Sesuai Desain Figma Gambar 1)
-              SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final topSpacing = constraints.maxHeight * 0.11;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(height: topSpacing.clamp(70.0, 110.0)),
-
-                          // Blok Teks: Judul & Subjudul (Diposisikan di Kanan Atas)
-                          FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: SlideTransition(
-                              position: _slideTextAnimation,
-                              child: Align(
-                                alignment: Alignment.topRight,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.63),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Percayakan Pada\nyang Terpercaya',
-                                        textAlign: TextAlign.right,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 23,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1.22,
-                                          color: const Color(0xFF111827),
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Bepergian Dengan Nyaman, Aman dan\nTanpa Rasa Khawatir',
-                                        textAlign: TextAlign.right,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.45,
-                                          color: const Color(0xFF475569),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const Spacer(),
-
-                          // Tombol START (Dark Pill Button di Atas Bidang Kaaba Bawah)
-                          FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: SlideTransition(
-                              position: _slideButtonAnimation,
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 300),
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: AnimatedScale(
-                                        scale: _isPressed ? 0.94 : 1.0,
-                                        duration: const Duration(milliseconds: 140),
-                                        curve: Curves.easeOutCubic,
-                                        child: InkWell(
-                                          onTap: widget.onStart,
-                                          onTapDown: (_) => setState(() => _isPressed = true),
-                                          onTapUp: (_) => setState(() => _isPressed = false),
-                                          onTapCancel: () => setState(() => _isPressed = false),
-                                          borderRadius: BorderRadius.circular(16),
-                                          child: Container(
-                                            height: 52,
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF2C2C2C),
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: Colors.white.withValues(alpha: 0.12),
-                                                width: 1,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black.withValues(alpha: 0.45),
-                                                  blurRadius: 18,
-                                                  offset: const Offset(0, 8),
-                                                ),
-                                              ],
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'START',
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: 2.0,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 54),
-
-                          // Test bridge transparan untuk pengujian otomatis
-                          _buildInvisibleTestBridge(),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-
-          if (!isWide) {
-            return content;
-          }
-
-          // Desktop / Tablet Web Preview: Centered mobile viewport preserving natural aspect ratio
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 36,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: content,
-              ),
-            ),
-          );
-        },
+      // Warna dasar = ujung bawah gradient, agar sisa ruang di layar yang
+      // lebih tinggi dari artboard menyatu tanpa garis batas.
+      backgroundColor: _gold,
+      body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: _designWidth,
+            height: _designHeight,
+            child: _buildArtboard(),
+          ),
+        ),
       ),
     );
   }
 
-  /// Memuat latar visual Kaaba 3D & Menara dengan fallback berlapis
-  Widget _buildHeroBackground() {
-    return Image.asset(
-      'assets/images/image.png',
-      fit: BoxFit.cover,
-      alignment: Alignment.topCenter,
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stackTrace) {
-        return Image.network(
-          'images/image.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-          width: double.infinity,
-          height: double.infinity,
-          errorBuilder: (context, error, stackTrace) {
-            return Image.network(
-              'assets/images/image.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildVectorFallback();
-              },
-            );
-          },
-        );
-      },
+  /// Artboard 414 x 896 dengan posisi absolut persis seperti desain.
+  Widget _buildArtboard() {
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        // Dasar putih (.screen background)
+        Positioned.fill(child: ColoredBox(color: Colors.white)),
+
+        // .grad — Easy Gradient Mask / Rectangle 1
+        Positioned.fill(child: _buildGradient()),
+
+        // .t1 — BOOK YOUR DREAM
+        Positioned(
+          left: 31,
+          top: 115,
+          width: 357,
+          height: 74,
+          child: Center(
+            child: Text(
+              'BOOK YOUR DREAM',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              style: GoogleFonts.poppins(
+                fontSize: 36,
+                fontWeight: FontWeight.w500,
+                height: 54 / 36,
+                color: _ink,
+              ),
+            ),
+          ),
+        ),
+
+        // .t2 — DESTINATION
+        Positioned(
+          left: 98,
+          top: 155,
+          width: 226,
+          height: 68,
+          child: Center(
+            child: Text(
+              'DESTINATION',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              style: GoogleFonts.poppins(
+                fontSize: 36,
+                fontWeight: FontWeight.w700,
+                height: 48 / 36,
+                color: _ink,
+              ),
+            ),
+          ),
+        ),
+
+        // .sub — subjudul
+        Positioned(
+          left: 17,
+          top: 223,
+          width: 384,
+          height: 20,
+          child: Center(
+            child: Text(
+              'Bepergian Dengan Nyaman, Aman, dan Terpercaya',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+                color: _ink,
+              ),
+            ),
+          ),
+        ),
+
+        // .group — tiga lingkaran foto (koordinat sudah diabsolutkan:
+        // posisi grup left 21 / top 311 + offset masing-masing lingkaran)
+        // .c-fuji  : left 193 + 21 = 214, top 13 + 311 = 324, z-index 1
+        Positioned(
+          left: 214,
+          top: 324,
+          child: _buildCircle(
+            size: 244,
+            // ganti dengan foto Gunung Fuji
+            assetPath: 'assets/images/fuji.jpg',
+            label: 'Gunung Fuji, Jepang',
+            alignment: Alignment.center,
+            placeholderColors: const [Color(0xFFF3C9DD), Color(0xFF6E7FC4)],
+            placeholderIcon: Icons.filter_vintage_rounded,
+          ),
+        ),
+
+        // .c-mecca : left -43 + 21 = -22, top 2 + 311 = 313, z-index 2
+        Positioned(
+          left: -22,
+          top: 313,
+          child: _buildCircle(
+            size: 250,
+            // ganti dengan foto Masjidil Haram
+            assetPath: 'assets/images/mecca.jpg',
+            label: 'Masjidil Haram, Mekkah',
+            // object-position: 50% 60%
+            alignment: const Alignment(0, 0.2),
+            placeholderColors: const [Color(0xFFBBD6E8), Color(0xFF5B87A8)],
+            placeholderIcon: Icons.mosque_rounded,
+          ),
+        ),
+
+        // .c-bottom: left 56 + 21 = 77, top 177 + 311 = 488, z-index 3
+        Positioned(
+          left: 77,
+          top: 488,
+          child: _buildCircle(
+            size: 236,
+            // ganti dengan foto balon udara Cappadocia
+            assetPath: 'assets/images/cappadocia.jpg',
+            label: 'Balon udara Cappadocia',
+            // object-position: 50% 40%
+            alignment: const Alignment(0, -0.2),
+            placeholderColors: const [Color(0xFFF6C98A), Color(0xFFA2622F)],
+            placeholderIcon: Icons.landscape_rounded,
+          ),
+        ),
+
+        // .login
+        Positioned(
+          left: 57,
+          top: 752,
+          width: 300,
+          height: 42,
+          child: _buildLoginButton(),
+        ),
+
+        // .reg — "Belum Punya akun? Daftar"
+        Positioned(
+          left: 0,
+          top: 812,
+          width: _designWidth,
+          child: _buildRegisterLine(),
+        ),
+
+        // Test bridge transparan untuk pengujian otomatis
+        Positioned(left: 0, top: 0, child: _buildInvisibleTestBridge()),
+      ],
     );
   }
 
-  /// Fallback grafis vektor murni jika asset gambar belum dimuat
-  Widget _buildVectorFallback() {
-    return Container(
-      decoration: const BoxDecoration(
+  /// Gradient desain: kotak 414 x 1185 pada top -289 di dalam layar 896.
+  /// Bagian yang terlihat dipetakan ulang ke rentang 0..1 tinggi layar,
+  /// ditumpuk di atas dasar putih.
+  Widget _buildGradient() {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF569CD6),
-            Color(0xFF8EC5FC),
-            Color(0xFF1E293B),
-            Color(0xFF0F172A),
+            Color(0x27ECC485), // alpha .153 — potongan stop 0% .. 35%
+            Color(0x38ECC485), // alpha .22  — stop 35%
+            Color(0x8CECC485), // alpha .55  — stop 62%
+            _gold, // alpha 1 — stop 100%
           ],
-          stops: [0.0, 0.45, 0.55, 1.0],
+          stops: [0.0, 0.1403, 0.4974, 1.0],
         ),
       ),
-      child: Stack(
-        children: [
-          // Siluet Menara Masjid
-          Positioned(
-            left: 36,
-            top: 140,
-            bottom: 240,
-            child: Container(
-              width: 50,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: const Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Icon(Icons.wb_sunny_rounded, color: Color(0xFFF59E0B), size: 24),
-                ),
-              ),
-            ),
-          ),
-          // Siluet Kaaba
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 360,
-            child: Container(
-              color: const Color(0xFF18181B),
-              child: Column(
-                children: [
-                  Container(
-                    height: 18,
-                    margin: const EdgeInsets.only(top: 40),
-                    color: const Color(0xFFD97706),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+    );
+  }
+
+  /// Lingkaran foto: border putih 8px (box-sizing: border-box,
+  /// jadi diameter luar = nilai width desain).
+  Widget _buildCircle({
+    required double size,
+    required String assetPath,
+    required String label,
+    required Alignment alignment,
+    required List<Color> placeholderColors,
+    required IconData placeholderIcon,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
       ),
+      padding: const EdgeInsets.all(8),
+      child: ClipOval(
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.cover,
+          alignment: alignment,
+          width: size - 16,
+          height: size - 16,
+          semanticLabel: label,
+          errorBuilder: (context, error, stackTrace) => DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: placeholderColors,
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                placeholderIcon,
+                size: size * 0.28,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Tombol LOGIN — radius 12, latar #F5FAFE, letter-spacing 2.
+  Widget _buildLoginButton() {
+    return Material(
+      color: _btn,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _handleLogin,
+        borderRadius: BorderRadius.circular(12),
+        child: Center(
+          child: Text(
+            'LOGIN',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 2,
+              color: _ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Baris "Belum Punya akun? Daftar" — kata "Daftar" tebal dengan
+  /// garis tipis 1.5px di atasnya (padanan pseudo-element ::before).
+  Widget _buildRegisterLine() {
+    final base = GoogleFonts.poppins(
+      fontSize: 11,
+      fontWeight: FontWeight.w400,
+      color: _ink,
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Belum Punya akun? ', style: base),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _handleRegister,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Text(
+                  'Daftar',
+                  style: base.copyWith(fontWeight: FontWeight.w600),
+                ),
+                // ::before — left 4, right -2, top -5, height 1.5
+                Positioned(
+                  left: 4,
+                  right: -2,
+                  top: -5,
+                  child: Container(height: 1.5, color: _ink),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

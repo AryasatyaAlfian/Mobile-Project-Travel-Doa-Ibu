@@ -1,14 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/api_client.dart';
-import '../core/app_colors.dart';
 import '../services/travel_api.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
-/// Elysian Horizon — Login Page Redesign
-/// 100% Presisi sesuai prototipe Figma "PROTOTYPE LOGIN PAGE" dengan font Poppins
+/// Halaman login sesuai Figma "PROTOTYPE LOGIN PAGE" (402 x 874).
+/// Semua posisi memakai koordinat Figma, lalu di-scale otomatis
+/// agar pas di ukuran layar apa pun lewat FittedBox.
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
@@ -24,12 +26,25 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  // Ukuran frame Figma
+  static const double _frameW = 402;
+  static const double _frameH = 874;
+
+  // Warna dari Figma
+  static const Color _bg = Color(0xFFFFF8EC);
+  static const Color _dark = Color(0xFF121413);
+  static const Color _fieldBorder = Color(0xFF131413);
+  static const Color _placeholder = Color.fromRGBO(118, 111, 111, 0.67);
+  static const Color _divider = Color(0xFFECECEC);
+  static const Color _blueLine = Color(0xFF90B6D3);
+  static const Color _googleBorder = Color.fromRGBO(125, 170, 203, 0.85);
+  static const Color _error = Color(0xFFC0392B);
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _rememberMe = true;
+
   bool _isLoading = false;
   bool _isGoogleLoading = false;
 
@@ -40,16 +55,53 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+  // line-height Figma = 1.5 x font-size (24/16, 36/24, 18/12, 21/14)
+  TextStyle _poppins(
+    double size,
+    FontWeight weight, {
+    Color color = Colors.black,
+  }) {
+    return GoogleFonts.poppins(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      height: 1.5,
+    );
+  }
 
+  /// Umpan balik kesalahan tampil sebagai snackbar, bukan teks di dalam frame.
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.poppins(fontSize: 13)),
+        backgroundColor: _error,
+      ),
+    );
+  }
+
+  /// Validasi di sisi klien, lalu panggil API login backend.
+  Future<void> _submit() async {
+    if (_isLoading) return;
+
+    final email = _emailController.text.trim();
+    final isEmailValid =
+        RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email);
+    final isPasswordFilled = _passwordController.text.isNotEmpty;
+
+    if (!isEmailValid) {
+      _showError('Masukkan email yang valid, contoh nama@gmail.com');
+      return;
+    }
+    if (!isPasswordFilled) {
+      _showError('Password belum diisi');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
-      final user = await widget.api.login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      final user = await widget.api.login(email, _passwordController.text);
 
       if (!mounted) return;
 
@@ -63,39 +115,23 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
 
-      if (widget.onLoginSuccess != null) {
-        widget.onLoginSuccess!();
-      }
+      widget.onLoginSuccess?.call();
       Navigator.pop(context);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.message,
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: AppColors.redNegative,
-        ),
-      );
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Gagal terhubung ke server. Periksa koneksi internet Anda.',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: AppColors.redNegative,
-        ),
-      );
+      _showError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   /// Alur Autentikasi Google Sign-In di sisi Frontend
-  Future<void> _handleGoogleSignIn() async {
+  Future<void> _loginWithGoogle() async {
+    if (_isGoogleLoading) return;
+
     // 1. Tampilkan Google Account Chooser Modal (Standar OAuth Frontend)
     final selectedAccount = await showModalBottomSheet<String>(
       context: context,
@@ -110,10 +146,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // 2. Autentikasikan sesi pengguna dengan data backend Laravel
-      final user = await widget.api.login(
-        'test@example.com',
-        'Password123!',
-      );
+      final user = await widget.api.login('test@example.com', 'Password123!');
 
       if (!mounted) return;
 
@@ -127,24 +160,380 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
 
-      if (widget.onLoginSuccess != null) {
-        widget.onLoginSuccess!();
-      }
+      widget.onLoginSuccess?.call();
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Gagal melakukan autentikasi Google. Silakan coba lagi.',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: AppColors.redNegative,
-        ),
-      );
+      _showError('Gagal melakukan autentikasi Google. Silakan coba lagi.');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
+  }
+
+  void _forgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ForgotPasswordPage(api: widget.api),
+      ),
+    );
+  }
+
+  void _goToRegister() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RegisterPage(
+          api: widget.api,
+          onRegisterSuccess: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      resizeToAvoidBottomInset: false,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: _frameW,
+              height: _frameH,
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  // Frame 875 — Selamat Datang
+                  Positioned(
+                    left: 96,
+                    top: 192,
+                    width: 219,
+                    height: 56,
+                    child: Center(
+                      child: Text(
+                        'Selamat Datang',
+                        style: _poppins(24, FontWeight.w500),
+                      ),
+                    ),
+                  ),
+
+                  // Frame 876 — subjudul
+                  Positioned(
+                    left: 101,
+                    top: 229,
+                    width: 201,
+                    height: 38,
+                    child: Center(
+                      child: Text(
+                        'Masuk untuk akses akun anda',
+                        style: _poppins(12, FontWeight.w400),
+                      ),
+                    ),
+                  ),
+
+                  // Email (label)
+                  Positioned(
+                    left: 49,
+                    top: 291,
+                    child: Text('Email', style: _poppins(16, FontWeight.w500)),
+                  ),
+
+                  // Frame 701 — input email
+                  Positioned(
+                    left: 33,
+                    top: 320,
+                    width: 337,
+                    height: 36,
+                    child: _buildField(
+                      controller: _emailController,
+                      hint: 'nama@gmail.com',
+                      leftPadding: 18,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                    ),
+                  ),
+
+                  // Frame 874 — Password (label), posisi 35,367 + padding 10
+                  Positioned(
+                    left: 45,
+                    top: 377,
+                    child:
+                        Text('Password', style: _poppins(16, FontWeight.w500)),
+                  ),
+
+                  // Lupa Password?
+                  Positioned(
+                    left: 274,
+                    top: 377,
+                    child: GestureDetector(
+                      onTap: _forgotPassword,
+                      child: Text(
+                        'Lupa Password?',
+                        style: _poppins(12, FontWeight.w400, color: _dark),
+                      ),
+                    ),
+                  ),
+
+                  // Frame 701 — input password
+                  Positioned(
+                    left: 33,
+                    top: 409,
+                    width: 337,
+                    height: 36,
+                    child: _buildField(
+                      controller: _passwordController,
+                      hint: '********',
+                      leftPadding: 20,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _submit(),
+                      trailing: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        child: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 24,
+                          color: _dark,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Frame 701 — tombol MASUK
+                  Positioned(
+                    left: 33,
+                    top: 479,
+                    width: 337,
+                    height: 54,
+                    child: Material(
+                      color: _dark,
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: _isLoading ? null : _submit,
+                        child: Center(
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 26,
+                                  height: 26,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  'MASUK',
+                                  style: _poppins(
+                                    24,
+                                    FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Line 2 — garis abu-abu (stroke 4px), rotate -0.28deg
+                  Positioned(
+                    left: 0,
+                    top: 535,
+                    child: Transform.rotate(
+                      angle: -0.28 * math.pi / 180,
+                      child: Container(
+                        width: 414,
+                        height: 8,
+                        color: _divider,
+                      ),
+                    ),
+                  ),
+
+                  // Rectangle 4
+                  Positioned(
+                    left: 4,
+                    top: 576,
+                    child: Container(width: 134, height: 2, color: _blueLine),
+                  ),
+
+                  // ATAU MASUK DENGAN
+                  Positioned(
+                    left: 142,
+                    top: 569,
+                    width: 127,
+                    height: 18,
+                    child: Center(
+                      child: Text(
+                        'ATAU MASUK DENGAN',
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.visible,
+                        style: _poppins(12, FontWeight.w400),
+                      ),
+                    ),
+                  ),
+
+                  // Rectangle 5
+                  Positioned(
+                    left: 273,
+                    top: 577,
+                    child: Container(width: 134, height: 2, color: _blueLine),
+                  ),
+
+                  // Frame 701 — tombol Google
+                  Positioned(
+                    left: 145,
+                    top: 602,
+                    width: 121,
+                    height: 51,
+                    child: Material(
+                      color: Colors.white,
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: _googleBorder, width: 1),
+                      ),
+                      child: InkWell(
+                        onTap: _isGoogleLoading ? null : _loginWithGoogle,
+                        child: _isGoogleLoading
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      _dark,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  // Group 7 — logo Google
+                                  const Positioned(
+                                    left: 19,
+                                    top: 14,
+                                    child: CustomPaint(
+                                      size: Size(22, 22),
+                                      painter: GoogleLogoPainter(),
+                                    ),
+                                  ),
+                                  // Google (teks)
+                                  Positioned(
+                                    left: 50,
+                                    top: 13,
+                                    child: Text(
+                                      'Google',
+                                      style: _poppins(16, FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+
+                  // Belum Punya Akun? Daftar
+                  Positioned(
+                    left: 0,
+                    top: 667,
+                    width: _frameW,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Belum Punya Akun? ',
+                          style: _poppins(16, FontWeight.w400),
+                        ),
+                        GestureDetector(
+                          onTap: _goToRegister,
+                          child: Text(
+                            'Daftar',
+                            style: _poppins(16, FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Input field: putih, border 1px #131413, radius 20.
+  Widget _buildField({
+    required TextEditingController controller,
+    required String hint,
+    required double leftPadding,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
+    Widget? trailing,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _fieldBorder, width: 1),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextField(
+                controller: controller,
+                obscureText: obscureText,
+                keyboardType: keyboardType,
+                textInputAction: textInputAction,
+                onSubmitted: onSubmitted,
+                cursorColor: _dark,
+                style: _poppins(14, FontWeight.w400),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  hintText: hint,
+                  hintStyle: _poppins(
+                    14,
+                    FontWeight.w400,
+                    color: _placeholder,
+                  ),
+                  contentPadding: EdgeInsets.only(
+                    left: leftPadding,
+                    right: trailing != null ? 44 : 18,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // weui:eyes-off-outlined — 24x24 di left 302, top 6
+          if (trailing != null)
+            Positioned(
+              left: 302,
+              top: 5,
+              width: 24,
+              height: 24,
+              child: trailing,
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildGoogleAccountModal() {
@@ -264,7 +653,8 @@ class _LoginPageState extends State<LoginPage> {
                 color: const Color(0xFFF1F5F9),
                 border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
-              child: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFF475569), size: 20),
+              child: const Icon(Icons.person_add_alt_1_outlined,
+                  color: Color(0xFF475569), size: 20),
             ),
             title: Text(
               'Gunakan akun Google lain',
@@ -277,398 +667,6 @@ class _LoginPageState extends State<LoginPage> {
             onTap: () => Navigator.pop(context, 'jemaah.doaibu@gmail.com'),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFEBF2F7),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Header: Selamat Datang & Subtitle
-                  Text(
-                    'Selamat Datang',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Masuk untuk akses akun anda',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-
-                  // 2. Field Email
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Email',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFF1E293B),
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Email wajib diisi';
-                      }
-                      if (!val.contains('@')) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'nama@gmail.com',
-                      hintStyle: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w400,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF94A3B8), width: 1.2),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF4E9FE5), width: 1.6),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.redNegative, width: 1.2),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.redNegative, width: 1.6),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // 3. Field Password
-                  Text(
-                    'Password',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFF1E293B),
-                    ),
-                    validator: (val) {
-                      if (val == null || val.isEmpty) {
-                        return 'Password wajib diisi';
-                      }
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      hintStyle: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w400,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF64748B),
-                          size: 22,
-                        ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF94A3B8), width: 1.2),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF4E9FE5), width: 1.6),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.redNegative, width: 1.2),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.redNegative, width: 1.6),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Checkbox "Ingat saya" & link "Lupa Password?"
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      InkWell(
-                        onTap: () => setState(() => _rememberMe = !_rememberMe),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                onChanged: (val) => setState(() => _rememberMe = val ?? true),
-                                activeColor: const Color(0xFF4E9FE5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Ingat saya',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF475569),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ForgotPasswordPage(api: widget.api),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Lupa Password?',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2563EB),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // 4. Primary Button: MASUK (Pill Capsule Cerah)
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4E9FE5),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              'MASUK',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // 5. Divider "ATAU MASUK DENGAN"
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Divider(
-                          color: Color(0xFFB0C5D7),
-                          thickness: 1,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'ATAU MASUK DENGAN',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.8,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                      const Expanded(
-                        child: Divider(
-                          color: Color(0xFFB0C5D7),
-                          thickness: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  // 6. Social Login Button: Google (Pill Berisi Icon & Teks)
-                  Center(
-                    child: InkWell(
-                      onTap: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFB0C5D7), width: 1.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _isGoogleLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF4E9FE5),
-                                ),
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const CustomPaint(
-                                    size: Size(20, 20),
-                                    painter: GoogleLogoPainter(),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Google',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // 7. Footer: Belum Punya Akun? Daftar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Belum Punya Akun? ',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => RegisterPage(
-                                  api: widget.api,
-                                  onRegisterSuccess: () {
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Daftar',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF4E9FE5),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

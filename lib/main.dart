@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'core/api_config.dart';
@@ -124,6 +126,10 @@ class _RootNavigationState extends State<RootNavigation> {
                 key: const ValueKey('initial_landing_page'),
                 api: widget.api,
                 onStart: () => setState(() => _hasStarted = true),
+                onAuthenticated: () => setState(() {
+                  _hasStarted = true;
+                  _hasEnteredApp = true;
+                }),
               )
             : LandingPage(
                 key: const ValueKey('landing_page'),
@@ -190,30 +196,31 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       extendBody: true,
       body: currentBody,
+      // Frame 739 — navbar melayang 250 x 57, rgba(13,10,10,0.15), radius 100
       bottomNavigationBar: SafeArea(
-        child: Container(
-          height: 60,
-          margin: const EdgeInsets.fromLTRB(48, 0, 48, 16),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF9DBED8).withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(9999),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.elysianSecondary.withValues(alpha: 0.16),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 17),
+          child: Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  width: 250,
+                  height: 57,
+                  color: const Color.fromRGBO(13, 10, 10, 0.15),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
+                      _buildNavIcon(1, Icons.luggage_outlined, Icons.luggage),
+                      _buildNavIcon(2, Icons.receipt_long_outlined, Icons.receipt_long),
+                      _buildNavIcon(3, Icons.person_outline, Icons.person),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
-              _buildNavIcon(1, Icons.confirmation_number_outlined, Icons.confirmation_number_rounded),
-              _buildNavIcon(2, Icons.supervisor_account_outlined, Icons.supervisor_account_rounded),
-              _buildNavIcon(3, Icons.person_outline_rounded, Icons.person_rounded),
-            ],
+            ),
           ),
         ),
       ),
@@ -227,12 +234,13 @@ class _MainScreenState extends State<MainScreen> {
         setState(() => _currentIndex = index);
       },
       borderRadius: BorderRadius.circular(9999),
-      child: Container(
-        padding: const EdgeInsets.all(8),
+      child: SizedBox(
+        width: 40,
+        height: 40,
         child: Icon(
           isSelected ? activeIcon : inactiveIcon,
-          size: 26,
-          color: isSelected ? AppColors.elysianSecondary : AppColors.elysianSecondary.withValues(alpha: 0.6),
+          size: 30,
+          color: const Color(0xFF19191B),
         ),
       ),
     );

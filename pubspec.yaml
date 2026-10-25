@@ -37,7 +37,7 @@ dependencies:
 
   # HTTP client untuk REST API backend Laravel.
   http: ^1.2.2
-  google_fonts: ^9.0.0
+  google_fonts: 8.2.1
 
 dev_dependencies:
   flutter_test:
