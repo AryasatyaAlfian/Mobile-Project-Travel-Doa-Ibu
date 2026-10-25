@@ -179,19 +179,79 @@ class BlogPost {
 }
 
 class AppUser {
-  AppUser({required this.id, required this.name, required this.email, required this.isAdmin});
+  AppUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.isAdmin,
+    this.role = 'jemaah',
+    this.roleLabel = 'Jemaah',
+    this.phone,
+  });
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
         id: json['id'] as int,
         name: json['name'] as String,
         email: json['email'] as String,
         isAdmin: json['is_admin'] as bool? ?? false,
+        role: json['role'] as String? ?? (json['is_admin'] == true ? 'admin' : 'jemaah'),
+        roleLabel: json['role_label'] as String? ?? 'Jemaah',
+        phone: json['phone'] as String?,
       );
 
   final int id;
   final String name;
   final String email;
   final bool isAdmin;
+  final String role;
+  final String roleLabel;
+  final String? phone;
+
+  bool get isJemaah => role == 'jemaah';
+  bool get isMuthawwif => role == 'muthawwif';
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+        'is_admin': isAdmin,
+        'role': role,
+        'role_label': roleLabel,
+        if (phone != null) 'phone': phone,
+      };
+}
+
+class Muthawwif {
+  Muthawwif({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.bio,
+    this.specialization,
+    this.languages = const [],
+    this.yearsExperience,
+    this.avatar,
+  });
+
+  factory Muthawwif.fromJson(Map<String, dynamic> json) => Muthawwif(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        phone: json['phone'] as String?,
+        bio: json['bio'] as String?,
+        specialization: json['specialization'] as String?,
+        languages: (json['languages'] as List?)?.map((e) => '$e').toList() ?? const [],
+        yearsExperience: json['years_experience'] as int?,
+        avatar: json['avatar'] as String?,
+      );
+
+  final int id;
+  final String name;
+  final String? phone;
+  final String? bio;
+  final String? specialization;
+  final List<String> languages;
+  final int? yearsExperience;
+  final String? avatar;
 }
 
 /// Data form pemesanan. Field & aturan sama dengan form /pemesanan di web.

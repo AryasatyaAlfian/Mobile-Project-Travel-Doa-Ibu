@@ -5,10 +5,12 @@ import 'core/app_colors.dart';
 import 'core/app_theme.dart';
 import 'models/models.dart';
 import 'services/travel_api.dart';
-import 'ui/contact_page.dart';
+import 'ui/homepage_jemaah.dart';
+import 'ui/initial_landing_page.dart';
 import 'ui/landing_page.dart';
+import 'ui/muthawwif_guard_page.dart';
 import 'ui/package_detail_page.dart';
-import 'ui/welcome_landing_page.dart';
+import 'ui/profile_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -53,19 +55,91 @@ class RootNavigation extends StatefulWidget {
 }
 
 class _RootNavigationState extends State<RootNavigation> {
-  bool _hasEnteredApp = false;
+  late bool _hasEnteredApp;
+  bool _hasStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Otomatis deteksi sesi dari local storage (Auto-Login / Session Restore)
+    _hasEnteredApp = widget.api.client.token != null && widget.api.client.token!.isNotEmpty;
+    if (_hasEnteredApp) {
+      widget.api.me().catchError((_) => null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!_hasEnteredApp) {
-      return WelcomeLandingPage(
-        api: widget.api,
-        onContinueAsGuest: () => setState(() => _hasEnteredApp = true),
+      // Transisi Halus (Shared-Axis Slide & Fade Transition) dari Layar 1 ke Layar 2
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 650),
+        reverseDuration: const Duration(milliseconds: 550),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (currentChild, previousChildren) {
+          return Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: <Widget>[
+              ...previousChildren,
+              ?currentChild,
+            ],
+          );
+        },
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          final isLanding = child.key == const ValueKey('landing_page');
+
+          // Meluncur halus secara horizontal (kanan ke kiri saat maju, kiri ke kanan saat mundur)
+          final offsetAnimation = Tween<Offset>(
+            begin: isLanding ? const Offset(0.12, 0.0) : const Offset(-0.12, 0.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          ));
+
+          // Skala dinamis yang halus (0.95 -> 1.0)
+          final scaleAnimation = Tween<double>(
+            begin: isLanding ? 0.95 : 1.03,
+            end: 1.0,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          ));
+
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: offsetAnimation,
+              child: ScaleTransition(
+                scale: scaleAnimation,
+                child: child,
+              ),
+            ),
+          );
+        },
+        child: !_hasStarted
+            ? InitialLandingPage(
+                key: const ValueKey('initial_landing_page'),
+                api: widget.api,
+                onStart: () => setState(() => _hasStarted = true),
+              )
+            : LandingPage(
+                key: const ValueKey('landing_page'),
+                api: widget.api,
+                onContinueAsGuest: () => setState(() => _hasEnteredApp = true),
+                onBackToInitial: () => setState(() => _hasStarted = false),
+              ),
       );
     }
+
     return MainScreen(
       api: widget.api,
-      onBackToWelcome: () => setState(() => _hasEnteredApp = false),
+      onBackToWelcome: () => setState(() {
+        _hasEnteredApp = false;
+        _hasStarted = true;
+      }),
     );
   }
 }
@@ -87,15 +161,30 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     Widget currentBody;
     if (_currentIndex == 0) {
-      currentBody = LandingPage(
+      currentBody = HomepageJemaah(
         api: widget.api,
         onExplorePackages: () => setState(() => _currentIndex = 1),
         onConsultation: () => setState(() => _currentIndex = 2),
+        onLogout: () {
+          widget.api.logout();
+          widget.onBackToWelcome?.call();
+        },
       );
     } else if (_currentIndex == 1) {
       currentBody = PackageListPage(api: widget.api);
+    } else if (_currentIndex == 2) {
+      currentBody = MuthawwifGuardPage(
+        api: widget.api,
+        onBackToHome: () => setState(() => _currentIndex = 0),
+      );
     } else {
-      currentBody = ContactPage(api: widget.api);
+      currentBody = ProfilePage(
+        api: widget.api,
+        onLogout: () {
+          widget.onBackToWelcome?.call();
+        },
+        onNavigateToMuthawwif: () => setState(() => _currentIndex = 2),
+      );
     }
 
     return Scaffold(
@@ -122,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
               _buildNavIcon(1, Icons.confirmation_number_outlined, Icons.confirmation_number_rounded),
-              _buildNavIcon(2, Icons.map_outlined, Icons.map_rounded),
+              _buildNavIcon(2, Icons.supervisor_account_outlined, Icons.supervisor_account_rounded),
               _buildNavIcon(3, Icons.person_outline_rounded, Icons.person_rounded),
             ],
           ),
@@ -132,16 +221,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildNavIcon(int index, IconData inactiveIcon, IconData activeIcon) {
-    final isSelected = (_currentIndex == index) || (_currentIndex > 2 && index == 3);
+    final isSelected = _currentIndex == index;
     return InkWell(
       onTap: () {
-        if (index == 2) {
-          setState(() => _currentIndex = 1); // maps to packages
-        } else if (index == 3) {
-          setState(() => _currentIndex = 2); // maps to contact/profile
-        } else {
-          setState(() => _currentIndex = index);
-        }
+        setState(() => _currentIndex = index);
       },
       borderRadius: BorderRadius.circular(9999),
       child: Container(
