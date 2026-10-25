@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
+import 'storage/app_storage.dart';
 
 /// Error dari API. [errors] berisi pesan validasi per field (HTTP 422).
 class ApiException implements Exception {
@@ -21,13 +22,25 @@ class ApiException implements Exception {
 class ApiClient {
   ApiClient({http.Client? httpClient, String? baseUrl})
       : _http = httpClient ?? http.Client(),
-        _baseUrl = baseUrl ?? ApiConfig.baseUrl;
+        _baseUrl = baseUrl ?? ApiConfig.baseUrl {
+    _token = AppStorage.instance.get('auth_token');
+  }
 
   final http.Client _http;
   final String _baseUrl;
 
-  /// Token Sanctum hasil login; dikirim otomatis di setiap request.
-  String? token;
+  String? _token;
+
+  /// Token Sanctum hasil login; tersimpan persisten di AppStorage.
+  String? get token => _token;
+  set token(String? val) {
+    _token = val;
+    if (val != null && val.isNotEmpty) {
+      AppStorage.instance.set('auth_token', val);
+    } else {
+      AppStorage.instance.remove('auth_token');
+    }
+  }
 
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) {
     final params = query?.map((k, v) => MapEntry(k, '$v'))

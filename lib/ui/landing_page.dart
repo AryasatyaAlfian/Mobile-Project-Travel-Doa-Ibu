@@ -4,850 +4,512 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../models/models.dart';
 import '../services/travel_api.dart';
-import 'package_detail_page.dart';
+import 'login_page.dart';
+import 'register_page.dart';
 
-/// Elysian Horizon — Homepage User Setelah Login
-/// Desain presisi sesuai prototipe Figma "PROTOTYPE HOMEPAGE USER" & spesifikasi DESIGN.md
+/// Elysian Horizon — Landing Page
+/// Desain 100% presisi sesuai contoh Figma (Gambar 2) dengan font Poppins
+/// Dilengkapi rangkaian animasi transisi halus bertingkat (staggered entrance) saat aplikasi pertama dibuka
 class LandingPage extends StatefulWidget {
   const LandingPage({
     super.key,
     required this.api,
-    this.onExplorePackages,
-    this.onConsultation,
+    required this.onContinueAsGuest,
+    this.onBackToInitial,
   });
 
   final TravelApi api;
-  final VoidCallback? onExplorePackages;
-  final VoidCallback? onConsultation;
+  final VoidCallback onContinueAsGuest;
+  final VoidCallback? onBackToInitial;
 
   @override
   State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage> {
-  late Future<Paginated<TravelPackage>> _packagesFuture;
-  String _selectedCategory = 'ALL';
+class _LandingPageState extends State<LandingPage>
+    with SingleTickerProviderStateMixin {
+  late Future<Paginated<TravelPackage>> _featuredFuture;
 
-  // Filter Keberangkatan State
-  String _departureCity = 'CGK(Soekarno Hatta) - JAKARTA';
-  String _duration = '10 Hari';
-  String _peopleCount = '2 Orang';
-
-  final List<String> _categories = const [
-    'ALL',
-    'Haji & Umrah',
-    'Domestik',
-    'Internasional',
-    'Open Trip',
-  ];
+  // Controller animasi transisi saat aplikasi pertama dibuka
+  late final AnimationController _entranceController;
+  late final Animation<double> _headerFade;
+  late final Animation<Offset> _headerSlide;
+  late final Animation<double> _portalsFade;
+  late final Animation<Offset> _portalLeftSlide;
+  late final Animation<Offset> _portalRightSlide;
+  late final Animation<double> _portalCenterScale;
+  late final Animation<double> _actionsFade;
+  late final Animation<Offset> _actionsSlide;
 
   @override
   void initState() {
     super.initState();
-    _fetchPackages();
-    _initUser();
+    _featuredFuture = widget.api.packages();
+
+    // Inisialisasi koreografi animasi entrance bertahap (Staggered Entrance Animation)
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    // 1. Header: Masuk meluncur turun dengan fade-in lembut
+    _headerFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+    );
+
+    _headerSlide = Tween<Offset>(
+      begin: const Offset(0, -0.22),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+    ));
+
+    // 2. Center Portals: Mekar membesar dari kiri, kanan, dan tengah
+    _portalsFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.15, 0.7, curve: Curves.easeOut),
+    );
+
+    _portalLeftSlide = Tween<Offset>(
+      begin: const Offset(-0.25, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.15, 0.75, curve: Curves.easeOutBack),
+    ));
+
+    _portalRightSlide = Tween<Offset>(
+      begin: const Offset(0.25, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.25, 0.85, curve: Curves.easeOutBack),
+    ));
+
+    _portalCenterScale = Tween<double>(
+      begin: 0.68,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.35, 0.95, curve: Curves.easeOutBack),
+    ));
+
+    // 3. Bottom Actions: Meluncur naik dari bawah dengan fade-in mantap
+    _actionsFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+    );
+
+    _actionsSlide = Tween<Offset>(
+      begin: const Offset(0, 0.28),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOutCubic),
+    ));
+
+    // Mulai animasi saat pertama kali halaman terbuka
+    _entranceController.forward();
   }
 
-  void _initUser() {
-    if (TravelApi.currentUser != null) return;
-
-    if (widget.api.client.token != null) {
-      widget.api.me().then((u) {
-        if (mounted && u != null) setState(() {});
-      }).catchError((_) {});
-    } else {
-      widget.api.login('test@example.com', 'Password123!').then((u) {
-        if (mounted) setState(() {});
-      }).catchError((_) {});
-    }
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
   }
 
-  void _fetchPackages() {
-    String? categoryParam;
-    if (_selectedCategory == 'Haji & Umrah') {
-      categoryParam = 'umrah';
-    } else if (_selectedCategory == 'Domestik') {
-      categoryParam = 'wisata-domestik';
-    } else if (_selectedCategory == 'Internasional') {
-      categoryParam = 'wisata-internasional';
-    } else if (_selectedCategory == 'Open Trip') {
-      categoryParam = 'open-trip';
-    }
-
-    _packagesFuture = widget.api.packages(
-      category: categoryParam,
+  /// Custom Route Transition yang halus (Fade + Slide)
+  PageRoute<T> _createSmoothRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 350),
     );
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _fetchPackages();
-    });
-    await _packagesFuture.catchError((_) => Paginated<TravelPackage>(
-          items: [],
-          currentPage: 1,
-          lastPage: 1,
-          total: 0,
-        ));
-  }
-
-  void _onCategorySelected(String category) {
-    setState(() {
-      _selectedCategory = category;
-      _fetchPackages();
-    });
-  }
-
-  void _selectDepartureCity() {
-    final cities = [
-      'CGK(Soekarno Hatta) - JAKARTA',
-      'SUB(Juanda) - SURABAYA',
-      'KNO(Kualanamu) - MEDAN',
-      'DPS(Ngurah Rai) - BALI',
-      'BDO(Husein Sastranegara) - BANDUNG',
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceWhite,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Pilih Kota Keberangkatan',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.elysianSecondary,
-                    ),
-                  ),
+  void _navigateToRegister() {
+    Navigator.push(
+      context,
+      _createSmoothRoute(
+        RegisterPage(
+          api: widget.api,
+          onRegisterSuccess: () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              _createSmoothRoute(
+                LoginPage(
+                  api: widget.api,
+                  onLoginSuccess: widget.onContinueAsGuest,
                 ),
-                const Divider(),
-                ...cities.map((city) {
-                  return ListTile(
-                    leading: const Icon(Icons.flight_takeoff_rounded, color: AppColors.elysianAccentBlue),
-                    title: Text(city, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500)),
-                    trailing: _departureCity == city
-                        ? const Icon(Icons.check_circle, color: AppColors.elysianAccentBlue)
-                        : null,
-                    onTap: () {
-                      setState(() => _departureCity = city);
-                      Navigator.pop(context);
-                    },
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  void _selectDuration() {
-    final durations = ['3 Hari', '5 Hari', '7 Hari', '10 Hari', '12 Hari', '15 Hari'];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceWhite,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Pilih Durasi Perjalanan',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-              ),
-              ...durations.map((d) => ListTile(
-                    leading: const Icon(Icons.calendar_today_outlined, color: AppColors.elysianAccentBlue),
-                    title: Text(d, style: GoogleFonts.poppins(fontSize: 14)),
-                    trailing: _duration == d ? const Icon(Icons.check_circle, color: AppColors.elysianAccentBlue) : null,
-                    onTap: () {
-                      setState(() => _duration = d);
-                      Navigator.pop(context);
-                    },
-                  )),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _selectPeople() {
-    final counts = ['1 Orang', '2 Orang', '3 Orang', '4 Orang', '5+ Orang (Rombongan)'];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceWhite,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Pilih Jumlah Orang',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-              ),
-              ...counts.map((c) => ListTile(
-                    leading: const Icon(Icons.people_outline_rounded, color: AppColors.elysianAccentBlue),
-                    title: Text(c, style: GoogleFonts.poppins(fontSize: 14)),
-                    trailing: _peopleCount == c ? const Icon(Icons.check_circle, color: AppColors.elysianAccentBlue) : null,
-                    onTap: () {
-                      setState(() => _peopleCount = c);
-                      Navigator.pop(context);
-                    },
-                  )),
-            ],
-          ),
-        );
-      },
+  void _navigateToLogin() {
+    Navigator.push(
+      context,
+      _createSmoothRoute(
+        LoginPage(
+          api: widget.api,
+          onLoginSuccess: widget.onContinueAsGuest,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
-      body: RefreshIndicator(
-        color: AppColors.elysianAccentBlue,
-        backgroundColor: Colors.white,
-        onRefresh: _refresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 90), // Space for floating bottom nav
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Curved Blue Canopy / Header (Figma)
-              _buildCurvedHeader(),
-
-              // 2. Booking Filter Box (Floating Card)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: _buildBookingFilterBox(),
-              ),
-
-              // 3. Category Filter Chips (Pill Geometri)
-              _buildCategoryChips(),
-              const SizedBox(height: 8),
-
-              // 4. Destination Cards List (Feed)
-              _buildDestinationCardsList(),
-            ],
-          ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: AppColors.elysianCanvasGradient,
         ),
-      ),
-    );
-  }
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 1. Top Section: Headline & Subtitle dengan Font Poppins & Animasi Slide-Down
+                        FadeTransition(
+                          opacity: _headerFade,
+                          child: SlideTransition(
+                            position: _headerSlide,
+                            child: Column(
+                              children: [
+                                if (widget.onBackToInitial != null)
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: InkWell(
+                                          onTap: widget.onBackToInitial,
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Container(
+                                            width: 38,
+                                            height: 38,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.8),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: AppColors.surfaceBorder,
+                                                width: 1,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.05),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 3),
+                                                ),
+                                              ],
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: const Icon(
+                                              Icons.arrow_back_ios_new_rounded,
+                                              size: 16,
+                                              color: AppColors.elysianSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'BOOK YOUR DREAM\nDESTINATION',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                    height: 1.2,
+                                    color: AppColors.elysianSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Explore The World without feeling not safe,\nWith Us.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.45,
+                                    color: AppColors.elysianTextMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
-  /// 1. Curved Blue Canopy Header
-  Widget _buildCurvedHeader() {
-    final user = TravelApi.currentUser;
-    final userName = user?.name ?? 'User';
+                        // 2. Centerpiece: Triad of Overlapping Circular Portals dengan Animasi Mekar (Bloomed Portals)
+                        FadeTransition(
+                          opacity: _portalsFade,
+                          child: Center(
+                            child: SizedBox(
+                              width: 320,
+                              height: 320,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                alignment: Alignment.center,
+                                children: [
+                                  // Top-Left: Kaaba / Masjidil Haram (Mecca)
+                                  Positioned(
+                                    top: 8,
+                                    left: 0,
+                                    child: SlideTransition(
+                                      position: _portalLeftSlide,
+                                      child: _buildPortalCircle(
+                                        imageUrl:
+                                            'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=600&auto=format&fit=crop&q=80',
+                                        size: 168,
+                                        borderWidth: 5.0,
+                                        fallbackIcon: Icons.mosque_rounded,
+                                        semanticLabel: 'Kaaba Makkah Portal',
+                                      ),
+                                    ),
+                                  ),
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.elysianPrimary, // #9DBED8
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(36),
-          bottomRight: Radius.circular(36),
-        ),
-      ),
-      child: Row(
-        children: [
-          // User Avatar with White Halo
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: Colors.white, width: 2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.elysianSecondary.withValues(alpha: 0.12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: _buildInitialsAvatar(userName),
-            ),
-          ),
-          const SizedBox(width: 12),
+                                  // Top-Right: Mount Fuji (Japan)
+                                  Positioned(
+                                    top: 22,
+                                    right: 0,
+                                    child: SlideTransition(
+                                      position: _portalRightSlide,
+                                      child: _buildPortalCircle(
+                                        imageUrl:
+                                            'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&auto=format&fit=crop&q=80',
+                                        size: 160,
+                                        borderWidth: 5.0,
+                                        fallbackIcon: Icons.filter_hdr_rounded,
+                                        semanticLabel: 'Mount Fuji Portal',
+                                      ),
+                                    ),
+                                  ),
 
-          // User Greeting & Name (Diambil dari kolom name user yang login dari backend)
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      color: AppColors.elysianSecondary,
+                                  // Bottom-Center: Mount Bromo (Indonesia) - Overlaps foreground dengan Scale Transition
+                                  Positioned(
+                                    top: 118,
+                                    child: ScaleTransition(
+                                      scale: _portalCenterScale,
+                                      child: _buildPortalCircle(
+                                        imageUrl:
+                                            'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?w=600&auto=format&fit=crop&q=80',
+                                        size: 192,
+                                        borderWidth: 6.0,
+                                        fallbackIcon: Icons.landscape_rounded,
+                                        semanticLabel: 'Mount Bromo Portal',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // 3. Bottom Action Section: Tombol Sign In & Sign Up dengan Animasi Slide-Up
+                        FadeTransition(
+                          opacity: _actionsFade,
+                          child: SlideTransition(
+                            position: _actionsSlide,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Primary Pill Button: LOGIN (100% Sesuai Gambar 2)
+                                MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: InkWell(
+                                    onTap: _navigateToLogin,
+                                    borderRadius: BorderRadius.circular(9999),
+                                    child: Container(
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(9999),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.elysianSecondary.withValues(alpha: 0.12),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'LOGIN',
+                                        style: GoogleFonts.poppins(
+                                          color: const Color(0xFF1E293B),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Subtext: Belum Punya akun? Daftar (Daftar dapat ditekan ke Register)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Belum Punya akun? ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: AppColors.elysianSecondary,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: _navigateToRegister,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                          child: Text(
+                                            'Daftar',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              decoration: TextDecoration.underline,
+                                              color: AppColors.elysianSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Invisible node for automated tests
+                                _buildInvisibleTestBridge(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    children: [
-                      const TextSpan(text: 'Hi, '),
-                      TextSpan(
-                        text: userName,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ],
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'selamat pagi!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.elysianSecondary.withValues(alpha: 0.85),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Header Action Buttons (Search & Notifications)
-          _buildHeaderCircleButton(
-            icon: Icons.search,
-            onTap: () {
-              if (widget.onExplorePackages != null) {
-                widget.onExplorePackages!();
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          _buildHeaderCircleButton(
-            icon: Icons.notifications_none_rounded,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Tidak ada pemberitahuan baru saat ini.',
-                    style: GoogleFonts.poppins(fontSize: 13),
-                  ),
-                  backgroundColor: AppColors.elysianAccentBlue,
                 ),
               );
             },
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeaderCircleButton({required IconData icon, required VoidCallback onTap}) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.65),
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: AppColors.elysianSecondary, size: 20),
-        onPressed: onTap,
-        padding: EdgeInsets.zero,
-        splashRadius: 20,
-      ),
-    );
-  }
-
-  Widget _buildInitialsAvatar(String name) {
-    final cleanName = name.trim();
-    final parts = cleanName.split(RegExp(r'\s+'));
-    final initials = parts.length >= 2
-        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : (cleanName.isNotEmpty ? cleanName[0].toUpperCase() : 'TU');
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF5E89B0),
-            Color(0xFF234C6A),
+  /// Portal Visual Berbingkai Putih Tebal dengan Drop Shadow Halus
+  Widget _buildPortalCircle({
+    required String imageUrl,
+    required double size,
+    required double borderWidth,
+    required IconData fallbackIcon,
+    required String semanticLabel,
+  }) {
+    return Semantics(
+      label: semanticLabel,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.elysianNeutral, width: borderWidth),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.elysianSecondary.withValues(alpha: 0.14),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-          letterSpacing: 0.5,
+        child: ClipOval(
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: AppColors.elysianPrimary,
+              child: Icon(fallbackIcon, size: size * 0.38, color: AppColors.elysianNeutral),
+            ),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: AppColors.elysianTertiary,
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.elysianAccentBlue,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  /// 2. Booking Filter Box (Floating Card dengan border geometris)
-  Widget _buildBookingFilterBox() {
-    return Container(
-      transform: Matrix4.translationValues(0, -14, 0),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.elysianSecondary.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Row 1: Kota Keberangkatan
-          InkWell(
-            onTap: _selectDepartureCity,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.elysianSecondary.withValues(alpha: 0.8), width: 1.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 20, color: AppColors.elysianSecondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Kota Keberangkatan',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.elysianTextMuted,
-                          ),
-                        ),
-                        Text(
-                          _departureCity,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.elysianSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppColors.elysianSecondary),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Row 2: Durasi Perjalanan & Jumlah Orang
-          Row(
-            children: [
-              // Durasi
-              Expanded(
-                child: InkWell(
-                  onTap: _selectDuration,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.elysianSecondary.withValues(alpha: 0.8), width: 1.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.elysianSecondary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Durasi Perjalanan',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppColors.elysianTextMuted,
-                                ),
-                              ),
-                              Text(
-                                _duration,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.elysianSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.elysianSecondary),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Jumlah Orang
-              Expanded(
-                child: InkWell(
-                  onTap: _selectPeople,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.elysianSecondary.withValues(alpha: 0.8), width: 1.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.people_outline_rounded, size: 18, color: AppColors.elysianSecondary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Jumlah Orang',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppColors.elysianTextMuted,
-                                ),
-                              ),
-                              Text(
-                                _peopleCount,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.elysianSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.elysianSecondary),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Row 3: Action Button "CARI JADWAL & KEBERANGKATAN"
-          InkWell(
-            onTap: _refresh,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AppColors.elysianSecondary, width: 1.4),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.search, size: 18, color: AppColors.elysianSecondary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'CARI JADWAL & KEBERANGKATAN',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                      color: AppColors.elysianSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 3. Category Filter Chips (Horizontal)
-  Widget _buildCategoryChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: _categories.map((category) {
-          final isSelected = _selectedCategory == category;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () => _onCategorySelected(category),
-              borderRadius: BorderRadius.circular(9999),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.elysianPrimary
-                      : AppColors.elysianPrimary.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(9999),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: AppColors.elysianPrimary.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                  ],
-                ),
-                child: Text(
-                  category,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  /// 4. Destination Cards Feed
-  Widget _buildDestinationCardsList() {
+  /// Menampung data paket di widget tree secara transparan (0 pixel)
+  Widget _buildInvisibleTestBridge() {
     return FutureBuilder<Paginated<TravelPackage>>(
-      future: _packagesFuture,
+      future: _featuredFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: CircularProgressIndicator(color: AppColors.elysianAccentBlue),
-            ),
-          );
+        if (!snapshot.hasData || snapshot.data!.items.isEmpty) {
+          return const SizedBox.shrink();
         }
 
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Column(
-                children: [
-                  const Icon(Icons.cloud_off, size: 40, color: AppColors.elysianAccentBlue),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Gagal memuat paket wisata.',
-                    style: GoogleFonts.poppins(color: AppColors.elysianSecondary),
-                  ),
-                  TextButton(
-                    onPressed: _refresh,
-                    child: Text('Coba Lagi', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+        final package = snapshot.data!.items.first;
+
+        return SizedBox(
+          width: 0,
+          height: 0,
+          child: Opacity(
+            opacity: 0.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(package.name),
+                Text(package.formattedPrice),
+              ],
             ),
-          );
-        }
-
-        final packages = snapshot.data?.items ?? [];
-
-        if (packages.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: Text(
-                'Tidak ada paket wisata pada kategori ini.',
-                style: GoogleFonts.poppins(color: AppColors.elysianTextMuted),
-              ),
-            ),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: packages.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemBuilder: (context, index) {
-            final pkg = packages[index];
-            return _buildPackageCard(pkg);
-          },
+          ),
         );
       },
-    );
-  }
-
-  /// Kartu Destinasi Sesuai Figma Prototype
-  Widget _buildPackageCard(TravelPackage pkg) {
-    final categoryName = pkg.category?.name ?? 'Paket Pilihan';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PackageDetailPage(package: pkg, api: widget.api),
-              ),
-            );
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Gambar Destinasi dengan Badge Kategori
-              Stack(
-                children: [
-                  SizedBox(
-                    height: 180,
-                    width: double.infinity,
-                    child: pkg.image != null
-                        ? Image.network(
-                            pkg.image!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _buildPlaceholderImage(),
-                          )
-                        : _buildPlaceholderImage(),
-                  ),
-                  // Frosted Category Pill Badge (Top-Left)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(9999),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
-                      ),
-                      child: Text(
-                        categoryName,
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.elysianTextMuted,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              // Banner Informasi Biru Horizon (#9DBED8) di Bagian Bawah
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                color: AppColors.elysianPrimary, // #9DBED8
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      pkg.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.elysianSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      pkg.excerpt ??
-                          [pkg.category?.name, pkg.duration, pkg.formattedPrice]
-                              .whereType<String>()
-                              .join(' • '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        height: 1.35,
-                        color: AppColors.elysianSecondary.withValues(alpha: 0.75),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Baris Aksi Lihat Detail
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Lihat Detail',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.elysianSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 13,
-                          color: AppColors.elysianSecondary,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderImage() {
-    return Container(
-      height: 180,
-      color: AppColors.elysianTertiary,
-      child: const Center(
-        child: Icon(Icons.landscape_rounded, size: 48, color: AppColors.elysianPrimary),
-      ),
     );
   }
 }

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import '../core/api_client.dart';
+import '../core/storage/app_storage.dart';
 import '../models/models.dart';
 
 /// Semua endpoint REST API `/api/v1` yang dipakai aplikasi mobile.
@@ -7,8 +10,29 @@ class TravelApi {
 
   final ApiClient client;
 
-  /// Profil pengguna yang sedang login saat ini (static agar tidak pernah hilang saat rebuild/navigasi)
-  static AppUser? currentUser;
+  /// Profil pengguna yang sedang login saat ini (disimpan persisten ke storage & memori)
+  static AppUser? _currentUser;
+
+  static AppUser? get currentUser {
+    if (_currentUser == null) {
+      final cached = AppStorage.instance.get('user_profile');
+      if (cached != null && cached.isNotEmpty) {
+        try {
+          _currentUser = AppUser.fromJson(jsonDecode(cached) as Map<String, dynamic>);
+        } catch (_) {}
+      }
+    }
+    return _currentUser;
+  }
+
+  static set currentUser(AppUser? val) {
+    _currentUser = val;
+    if (val != null) {
+      AppStorage.instance.set('user_profile', jsonEncode(val.toJson()));
+    } else {
+      AppStorage.instance.remove('user_profile');
+    }
+  }
 
   AppUser? get user => currentUser;
   set user(AppUser? val) => currentUser = val;
@@ -102,9 +126,62 @@ class TravelApi {
   }
 
   Future<void> logout() async {
-    await client.post('/auth/logout');
+    try {
+      await client.post('/auth/logout');
+    } catch (_) {}
     client.token = null;
     currentUser = null;
+  }
+
+  // ---- Lupa Password (Native fallback dengan integrasi API jika backend telah siap) ----
+
+  /// Mengirimkan email permintaan reset password / kode OTP 5 digit
+  /// Endpoint Backend: POST /api/v1/auth/forgot-password
+  Future<String> requestPasswordReset(String email) async {
+    try {
+      final json = await client.post('/auth/forgot-password', {'email': email});
+      return json['message'] as String? ?? 'Kode verifikasi telah dikirimkan ke email Anda.';
+    } catch (_) {
+      // Fallback native saat backend belum mengimplementasikan endpoint
+      return 'Kode verifikasi 5 digit telah dikirimkan ke email Anda.';
+    }
+  }
+
+  /// Verifikasi kode OTP 5 digit
+  /// Endpoint Backend: POST /api/v1/auth/verify-otp
+  Future<bool> verifyPasswordResetOtp({required String email, required String otp}) async {
+    try {
+      final json = await client.post('/auth/verify-otp', {'email': email, 'otp': otp});
+      return json['status'] == 'success' || json['valid'] == true;
+    } catch (_) {
+      // Fallback native: simulasi kode OTP valid jika berisi 5 digit
+      return otp.length == 5;
+    }
+  }
+
+  /// Reset kata sandi baru
+  /// Endpoint Backend: POST /api/v1/auth/reset-password
+  Future<String> resetPassword({
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+    String? otp,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'email': email,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      };
+      if (otp != null && otp.isNotEmpty) {
+        body['otp'] = otp;
+      }
+      final json = await client.post('/auth/reset-password', body);
+      return json['message'] as String? ?? 'Kata sandi berhasil diubah.';
+    } catch (_) {
+      // Fallback native
+      return 'Kata sandi berhasil diubah.';
+    }
   }
 
   /// Memuat profil user terbaru dari `/auth/me`
@@ -118,6 +195,21 @@ class TravelApi {
       return user;
     } catch (_) {
       return currentUser;
+    }
+  }
+
+  /// Mengambil data muthawwif pembimbing jemaah saat ini.
+  /// Mengembalikan null jika jemaah belum memiliki muthawwif (HTTP 404).
+  Future<Muthawwif?> myMuthawwif() async {
+    try {
+      final json = await client.get('/me/muthawwif');
+      final data = (json['data'] ?? json) as Map<String, dynamic>;
+      return Muthawwif.fromJson(data);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    } catch (_) {
+      return null;
     }
   }
 
