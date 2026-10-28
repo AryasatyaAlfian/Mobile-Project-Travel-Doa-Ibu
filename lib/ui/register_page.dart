@@ -2,17 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/api_client.dart';
 import '../services/travel_api.dart';
+import '../services/google_auth_service.dart';
 import 'login_page.dart';
 
 /// Halaman daftar sesuai Figma "PROTOTYPE SIGN UP PAGE" (402 x 874).
 /// Semua posisi memakai koordinat Figma, lalu di-scale otomatis
 /// agar pas di ukuran layar apa pun lewat FittedBox.
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key, required this.api, this.onRegisterSuccess});
+  const RegisterPage({
+    super.key,
+    required this.api,
+    this.onRegisterSuccess,
+    this.onGoogleSignInSuccess,
+    this.googleAuth,
+  });
 
   final TravelApi api;
   final VoidCallback? onRegisterSuccess;
+  /// Notify the app that Google already established a session. This page pops
+  /// its own route afterward; unlike password registration, no login is needed.
+  final VoidCallback? onGoogleSignInSuccess;
+  final GoogleAuthService? googleAuth;
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -80,7 +92,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   /// Validasi di sisi klien, lalu panggil API daftar backend.
   Future<void> _submit() async {
-    if (_isLoading) return;
+    if (_isLoading || _isGoogleLoading) return;
 
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -224,133 +236,40 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  /// Alur Daftar dengan Google di sisi Frontend.
+  /// Google registration and login use the same verified backend endpoint.
   Future<void> _signUpWithGoogle() async {
-    if (_isGoogleLoading) return;
-
-    final selectedAccount = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _buildGoogleAccountSheet(),
-    );
-
-    if (selectedAccount == null || !mounted) return;
-
+    if (_isGoogleLoading || _isLoading) return;
+    FocusScope.of(context).unfocus();
     setState(() => _isGoogleLoading = true);
     try {
-      await widget.api.login('test@example.com', 'Password123!');
+      final idToken = await (widget.googleAuth ?? GoogleSignInAuthService.instance)
+          .authenticateIdToken();
+      if (!mounted || idToken == null) return;
+      await widget.api.loginWithGoogle(idToken);
       if (!mounted) return;
-      setState(() => _isGoogleLoading = false);
 
-      final onSuccess = widget.onRegisterSuccess;
-      if (onSuccess != null) {
-        onSuccess();
+      final onAuthenticated = widget.onGoogleSignInSuccess;
+      if (onAuthenticated != null) {
+        onAuthenticated();
+        if (mounted) Navigator.pop(context);
+      } else if (widget.onRegisterSuccess != null) {
+        widget.onRegisterSuccess!();
       } else {
         Navigator.pop(context);
       }
+    } on GoogleAuthException catch (e) {
+      if (mounted) _showError(e.message);
+    } on ApiException catch (e) {
+      if (mounted) _showError(e.message);
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _isGoogleLoading = false);
-      _showError('Gagal melakukan autentikasi Google. Silakan coba lagi.');
+      if (mounted) {
+        _showError('Gagal melakukan autentikasi Google. Silakan coba lagi.');
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
-  Widget _buildGoogleAccountSheet() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(9999),
-              ),
-            ),
-            Row(
-              children: [
-                const CustomPaint(
-                  size: Size(22, 22),
-                  painter: GoogleLogoPainter(),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Daftar dengan Google',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    Text(
-                      'Pilih akun untuk melanjutkan ke Travel Doa Ibu',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              leading: Container(
-                width: 42,
-                height: 42,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF5E89B0), Color(0xFF234C6A)],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'TU',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-              title: Text(
-                'Test User',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              subtitle: Text(
-                'test@example.com',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-              onTap: () => Navigator.pop(context, 'test@example.com'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _goToLogin() {
     final navigator = Navigator.of(context);
@@ -515,7 +434,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       borderRadius: BorderRadius.circular(20),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        onTap: _isLoading ? null : _submit,
+                        onTap: _isLoading || _isGoogleLoading ? null : _submit,
                         child: Center(
                           child: _isLoading
                               ? const SizedBox(
@@ -586,7 +505,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         side: const BorderSide(color: _googleBorder, width: 1),
                       ),
                       child: InkWell(
-                        onTap: _isGoogleLoading ? null : _signUpWithGoogle,
+                        onTap: _isGoogleLoading || _isLoading ? null : _signUpWithGoogle,
                         child: _isGoogleLoading
                             ? const Center(
                                 child: SizedBox(

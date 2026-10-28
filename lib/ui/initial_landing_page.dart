@@ -88,6 +88,7 @@ class _InitialLandingPageState extends State<InitialLandingPage> {
       _createRoute(
         RegisterPage(
           api: api,
+          onGoogleSignInSuccess: widget.onAuthenticated ?? widget.onStart,
           onRegisterSuccess: () {
             Navigator.pop(context);
             _handleLogin();

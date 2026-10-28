@@ -104,6 +104,31 @@ class TravelApi {
     return user;
   }
 
+  /// Google login and registration share the server's verified ID-token flow.
+  Future<AppUser> loginWithGoogle(String idToken) async {
+    if (idToken.trim().isEmpty) {
+      throw ApiException('Token Google tidak tersedia. Silakan masuk ulang.');
+    }
+    final json = await client.post('/auth/google', {
+      'id_token': idToken,
+      'device_name': 'mobile_project_doa_ibu',
+    });
+    final token = json['token'];
+    final profile = json['user'];
+    if (token is! String || token.trim().isEmpty || profile is! Map<String, dynamic>) {
+      throw ApiException('Respons autentikasi server tidak valid. Silakan coba lagi.');
+    }
+    final AppUser user;
+    try {
+      user = AppUser.fromJson(profile);
+    } catch (_) {
+      throw ApiException('Respons autentikasi server tidak valid. Silakan coba lagi.');
+    }
+    client.token = token;
+    currentUser = user;
+    return user;
+  }
+
   Future<AppUser> register({
     required String name,
     required String email,

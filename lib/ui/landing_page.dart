@@ -144,6 +144,7 @@ class _LandingPageState extends State<LandingPage>
       _createSmoothRoute(
         RegisterPage(
           api: widget.api,
+          onGoogleSignInSuccess: widget.onContinueAsGuest,
           onRegisterSuccess: () {
             Navigator.pop(context);
             Navigator.push(

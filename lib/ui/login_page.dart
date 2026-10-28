@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/api_client.dart';
+import '../services/google_auth_service.dart';
 import '../services/travel_api.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
@@ -16,10 +17,12 @@ class LoginPage extends StatefulWidget {
     super.key,
     required this.api,
     this.onLoginSuccess,
+    this.googleAuth,
   });
 
   final TravelApi api;
   final VoidCallback? onLoginSuccess;
+  final GoogleAuthService? googleAuth;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -81,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
 
   /// Validasi di sisi klien, lalu panggil API login backend.
   Future<void> _submit() async {
-    if (_isLoading) return;
+    if (_isLoading || _isGoogleLoading) return;
 
     final email = _emailController.text.trim();
     final isEmailValid =
@@ -128,43 +131,38 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Alur Autentikasi Google Sign-In di sisi Frontend
+  /// Authenticate a real Google account, then let the backend verify its token.
   Future<void> _loginWithGoogle() async {
-    if (_isGoogleLoading) return;
-
-    // 1. Tampilkan Google Account Chooser Modal (Standar OAuth Frontend)
-    final selectedAccount = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildGoogleAccountModal(),
-    );
-
-    if (selectedAccount == null || !mounted) return;
-
+    if (_isGoogleLoading || _isLoading) return;
+    FocusScope.of(context).unfocus();
     setState(() => _isGoogleLoading = true);
 
     try {
-      // 2. Autentikasikan sesi pengguna dengan data backend Laravel
-      final user = await widget.api.login('test@example.com', 'Password123!');
-
+      final idToken = await (widget.googleAuth ?? GoogleSignInAuthService.instance)
+          .authenticateIdToken();
+      if (!mounted || idToken == null) return;
+      final user = await widget.api.loginWithGoogle(idToken);
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Berhasil masuk dengan akun Google: ${user.name} ($selectedAccount)!',
+            'Berhasil masuk dengan Google, ${user.name}!',
             style: GoogleFonts.poppins(fontSize: 13),
           ),
           backgroundColor: const Color(0xFF4E9FE5),
         ),
       );
-
       widget.onLoginSuccess?.call();
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+    } on GoogleAuthException catch (e) {
+      if (mounted) _showError(e.message);
+    } on ApiException catch (e) {
+      if (mounted) _showError(e.message);
     } catch (_) {
-      if (!mounted) return;
-      _showError('Gagal melakukan autentikasi Google. Silakan coba lagi.');
+      if (mounted) {
+        _showError('Gagal melakukan autentikasi Google. Silakan coba lagi.');
+      }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -180,12 +178,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _goToRegister() {
-    Navigator.pushReplacement(
-      context,
+    final navigator = Navigator.of(context);
+    navigator.pushReplacement(
       MaterialPageRoute(
         builder: (context) => RegisterPage(
           api: widget.api,
-          onRegisterSuccess: () => Navigator.pop(context),
+          googleAuth: widget.googleAuth,
+          onGoogleSignInSuccess: widget.onLoginSuccess,
+          onRegisterSuccess: () => navigator.pop(),
         ),
       ),
     );
@@ -319,7 +319,7 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(20),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        onTap: _isLoading ? null : _submit,
+                        onTap: _isLoading || _isGoogleLoading ? null : _submit,
                         child: Center(
                           child: _isLoading
                               ? const SizedBox(
@@ -404,7 +404,7 @@ class _LoginPageState extends State<LoginPage> {
                         side: const BorderSide(color: _googleBorder, width: 1),
                       ),
                       child: InkWell(
-                        onTap: _isGoogleLoading ? null : _loginWithGoogle,
+                        onTap: _isGoogleLoading || _isLoading ? null : _loginWithGoogle,
                         child: _isGoogleLoading
                             ? const Center(
                                 child: SizedBox(
@@ -536,140 +536,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildGoogleAccountModal() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(9999),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              const CustomPaint(
-                size: Size(22, 22),
-                painter: GoogleLogoPainter(),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pilih akun Google',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
-                    ),
-                  ),
-                  Text(
-                    'untuk melanjutkan ke Travel Doa Ibu',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 8),
 
-          // Akun 1: Test User
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            leading: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF5E89B0), Color(0xFF234C6A)],
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'TU',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-            title: Text(
-              'Test User',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1E293B),
-              ),
-            ),
-            subtitle: Text(
-              'test@example.com',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-            onTap: () => Navigator.pop(context, 'test@example.com'),
-          ),
-
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-
-          // Akun 2: Akun demo alternatif
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            leading: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF1F5F9),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: const Icon(Icons.person_add_alt_1_outlined,
-                  color: Color(0xFF475569), size: 20),
-            ),
-            title: Text(
-              'Gunakan akun Google lain',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF334155),
-              ),
-            ),
-            onTap: () => Navigator.pop(context, 'jemaah.doaibu@gmail.com'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Pelukis Logo Google "G" 4-Warna Resmi (Merah, Kuning, Hijau, Biru)
