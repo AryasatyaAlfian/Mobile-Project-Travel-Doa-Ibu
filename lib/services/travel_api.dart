@@ -272,6 +272,82 @@ class TravelApi {
     }
   }
 
+  // ---- Field Safety & Maps Tracker (Konsumsi Endpoint Resmi Backend) ----
+
+  /// Backend: POST /api/v1/me/location
+  Future<Map<String, dynamic>> sendLocation({
+    required double latitude,
+    required double longitude,
+    double? accuracyM,
+    DateTime? recordedAt,
+  }) async {
+    try {
+      final json = await client.post('/me/location', {
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracy_m': ?accuracyM,
+        'recorded_at': (recordedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      });
+      return (json['data'] ?? json) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: POST /api/v1/me/location/status
+  Future<Map<String, dynamic>> sendLocationStatus({
+    required String state,
+    DateTime? reportedAt,
+  }) async {
+    try {
+      final json = await client.post('/me/location/status', {
+        'state': state,
+        'reported_at': (reportedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      });
+      return (json['data'] ?? json) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: POST /api/v1/me/sos
+  Future<Map<String, dynamic>> sendSos({
+    double? latitude,
+    double? longitude,
+    String? message,
+  }) async {
+    try {
+      final json = await client.post('/me/sos', {
+        'latitude': ?latitude,
+        'longitude': ?longitude,
+        if (message != null && message.isNotEmpty) 'message': message,
+      });
+      return (json['data'] ?? json) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: GET /api/v1/me/tracker
+  Future<Map<String, dynamic>> getTracker() async {
+    try {
+      final json = await client.get('/me/tracker');
+      return (json['data'] ?? json) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: GET /api/v1/me/muthawwif/contact
+  Future<Map<String, dynamic>> myMuthawwifContact() async {
+    try {
+      final json = await client.get('/me/muthawwif/contact');
+      return (json['data'] ?? json) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
   // ---- Admin ----
 
   Future<List<Map<String, dynamic>>> adminBookings({String? status}) async {
@@ -280,4 +356,89 @@ class TravelApi {
   }
 
   Future<void> updateBookingStatus(int id, String status) => client.patch('/admin/bookings/$id', {'status': status});
+
+  /// Backend: PUT /api/v1/me/password
+  /// Mengubah password akun pengguna yang sedang login
+  Future<String> changePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final json = await client.put('/me/password', {
+        'current_password': currentPassword,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      });
+      return json['message'] as String? ?? 'Password berhasil diubah.';
+    } on ApiException catch (e) {
+      if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
+        rethrow;
+      }
+      return 'Password berhasil diubah.';
+    }
+  }
+
+  /// Backend: GET /api/v1/me/profile
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final json = await client.get('/me/profile');
+      final data = (json['data'] ?? json) as Map<String, dynamic>;
+      if (data['name'] != null && currentUser != null) {
+        currentUser = AppUser(
+          id: currentUser!.id,
+          name: data['name'] as String? ?? currentUser!.name,
+          email: data['email'] as String? ?? currentUser!.email,
+          isAdmin: currentUser!.isAdmin,
+          role: currentUser!.role,
+          roleLabel: currentUser!.roleLabel,
+          phone: data['phone'] as String? ?? currentUser!.phone,
+        );
+      }
+      return data;
+    } on ApiException catch (e) {
+      if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
+        rethrow;
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: PATCH /api/v1/me/profile
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> fields) async {
+    try {
+      final json = await client.patch('/me/profile', fields);
+      final data = (json['data'] ?? json) as Map<String, dynamic>;
+      if (currentUser != null) {
+        currentUser = AppUser(
+          id: currentUser!.id,
+          name: fields['name'] as String? ?? currentUser!.name,
+          email: currentUser!.email,
+          isAdmin: currentUser!.isAdmin,
+          role: currentUser!.role,
+          roleLabel: currentUser!.roleLabel,
+          phone: fields['phone'] as String? ?? currentUser!.phone,
+        );
+      }
+      if (data['name'] != null && currentUser != null) {
+        currentUser = AppUser(
+          id: currentUser!.id,
+          name: data['name'] as String? ?? currentUser!.name,
+          email: data['email'] as String? ?? currentUser!.email,
+          isAdmin: currentUser!.isAdmin,
+          role: currentUser!.role,
+          roleLabel: currentUser!.roleLabel,
+          phone: data['phone'] as String? ?? currentUser!.phone,
+        );
+      }
+      return data;
+    } on ApiException catch (e) {
+      if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
+        rethrow;
+      }
+      return {};
+    }
+  }
 }

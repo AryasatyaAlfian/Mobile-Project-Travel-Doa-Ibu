@@ -56,6 +56,10 @@ class ApiClient {
     return _send(() => _http.patch(_uri(path), headers: _headers(), body: jsonEncode(body)));
   }
 
+  Future<Map<String, dynamic>> put(String path, [Map<String, dynamic>? body]) {
+    return _send(() => _http.put(_uri(path), headers: _headers(), body: jsonEncode(body ?? {})));
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) {
     final uri = Uri.parse('$_baseUrl$path');
     return query == null || query.isEmpty ? uri : uri.replace(queryParameters: query);
