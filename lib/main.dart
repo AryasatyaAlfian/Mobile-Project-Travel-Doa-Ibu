@@ -13,6 +13,7 @@ import 'ui/landing_page.dart';
 import 'ui/muthawwif_guard_page.dart';
 import 'ui/package_detail_page.dart';
 import 'ui/profile_page.dart';
+import 'ui/ticket_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -177,7 +178,7 @@ class _MainScreenState extends State<MainScreen> {
         },
       );
     } else if (_currentIndex == 1) {
-      currentBody = PackageListPage(api: widget.api);
+      currentBody = const TicketPage(key: ValueKey('ticket_page'));
     } else if (_currentIndex == 2) {
       currentBody = MuthawwifGuardPage(
         api: widget.api,
@@ -196,27 +197,30 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       extendBody: true,
       body: currentBody,
-      // Frame 739 — navbar melayang 250 x 57, rgba(13,10,10,0.15), radius 100
+      // Frame 739 — navbar melayang 250 x 57 terkunci di bawah layar, radius 100
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 17),
-          child: Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(100),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  width: 250,
-                  height: 57,
-                  color: const Color.fromRGBO(13, 10, 10, 0.15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
-                      _buildNavIcon(1, Icons.luggage_outlined, Icons.luggage),
-                      _buildNavIcon(2, Icons.receipt_long_outlined, Icons.receipt_long),
-                      _buildNavIcon(3, Icons.person_outline, Icons.person),
-                    ],
+          child: SizedBox(
+            height: 57,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(100),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    width: 250,
+                    height: 57,
+                    color: const Color.fromRGBO(13, 10, 10, 0.15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
+                        _buildNavIcon(1, Icons.confirmation_num_outlined, Icons.confirmation_num),
+                        _buildNavIcon(2, Icons.map_outlined, Icons.map_rounded),
+                        _buildNavIcon(3, Icons.person_outline, Icons.person),
+                      ],
+                    ),
                   ),
                 ),
               ),

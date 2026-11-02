@@ -5,6 +5,7 @@ import '../core/app_colors.dart';
 import '../services/travel_api.dart';
 import 'contact_page.dart';
 import 'muthawwif_guard_page.dart';
+import 'widgets/skeleton_view.dart';
 
 /// Elysian Horizon — Halaman Profil Pengguna & Fitur Logout Lengkap
 /// Menyajikan informasi akun, status muthawwif, kontak bantuan, dan alur keluar (logout) dengan konfirmasi aman
@@ -26,6 +27,15 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _isLoggingOut = false;
+  bool _isLoading = false;
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isLoading = true);
+    try {
+      await widget.api.me();
+    } catch (_) {}
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   Future<void> _handleLogout() async {
     // 1. Tampilkan Dialog Konfirmasi Logout yang Elegan & Humanis
@@ -170,11 +180,17 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: const Color(0xFF234C6A),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+            child: _isLoading
+                ? _buildSkeletonProfileView()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
               // 1. Header Profil dengan Inisial & Halo Glow
               Container(
                 padding: const EdgeInsets.all(24),
@@ -489,8 +505,9 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSettingsTile({
     required IconData icon,
@@ -526,6 +543,64 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
       trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 22),
+    );
+  }
+
+  /// Skeleton placeholder saat memuat profil akun
+  Widget _buildSkeletonProfileView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: const [
+              SkeletonCircle(size: 80),
+              SizedBox(height: 14),
+              SkeletonBox(width: 160, height: 22, borderRadius: 6),
+              SizedBox(height: 6),
+              SkeletonBox(width: 200, height: 14, borderRadius: 4),
+              SizedBox(height: 12),
+              SkeletonBox(width: 90, height: 28, borderRadius: 14),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: const [
+              SkeletonBox(height: 52, borderRadius: 14),
+              SizedBox(height: 10),
+              SkeletonBox(height: 52, borderRadius: 14),
+              SizedBox(height: 10),
+              SkeletonBox(height: 52, borderRadius: 14),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

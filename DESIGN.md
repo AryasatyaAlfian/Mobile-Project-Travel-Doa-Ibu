@@ -19,12 +19,32 @@ Desain ini mengusung etika perjalanan yang ekspansif, mengangkat, dan tenang —
 
 ## Colors
 
+### Palet Desain Halaman (CSS Variables & Flutter Tokens)
+
+Palet dasar ini diterapkan secara konsisten pada **Initial Landing Page**, **Landing Page**, **Login**, **Sign Up / Daftar**, **Forgot Password**, serta **Homepage Jemaah**:
+
+| Token CSS | Token Flutter | Nilai Hex | Peran & Penggunaan |
+|---|---|---|---|
+| `--gold` | `_gold` / `AppColors.gold` | `#ECC485` | Aksen emas hangat Ka'bah, transisi gradient bawah (`ground-bottom`), aksen link pendaftaran, dan elemen seleksi |
+| `--btn` | `_btn` / `AppColors.btn` | `#F5FAFE` | Latar tombol pill interaktif (`START`, `LOGIN`, dll.) & container permukaan cerah |
+| `--ink` | `_ink` / `AppColors.ink` | `#1F1F1F` | Deep charcoal typography untuk heading (`Book Your Dream Destination`), judul form, dan teks berbobot tebal |
+
+```dart
+// Palet sesuai variabel CSS desain (Initial Landing Page, Landing Page, Login, dll)
+static const Color _gold = Color(0xFFECC485); // --gold
+static const Color _btn  = Color(0xFFF5FAFE); // --btn
+static const Color _ink  = Color(0xFF1F1F1F); // --ink
+```
+
 ### Palet Utama
 
 | Token     | Hex       | Peran                                                                   |
 | --------- | --------- | ----------------------------------------------------------------------- |
+| Gold      | `#ECC485` | `--gold`: Warm gold accent Ka'bah, gradient dasar, highlight aksen      |
+| Btn       | `#F5FAFE` | `--btn`: Ice-white soft pill button fill & form surface                 |
+| Ink       | `#1F1F1F` | `--ink`: Deep solid charcoal typography & high-contrast titles          |
 | Primary   | `#9DBED8` | Soft luminous horizon blue — gradient bg, aksen seleksi, container fill |
-| Secondary | `#111827` | Deep charcoal slate — tipografi, tombol, ikon aktif                     |
+| Secondary | `#111827` | Deep charcoal slate — tipografi sekunder, tombol, ikon aktif            |
 | Tertiary  | `#EBF2F7` | Whispering sky mist — card backdrop, container sekunder, tint langit    |
 | Neutral   | `#FFFFFF` | Pure cloud white — tombol interaktif, frosted glass, form input         |
 
@@ -110,9 +130,10 @@ Desain ini mengusung etika perjalanan yang ekspansif, mengangkat, dan tenang —
 
 ### Aturan Penggunaan Palet
 
-- **Canvas Gradation** — Viewport penuh bertransisi linear dari `#F4F8FB` (atas) ke `#9DBED8` (bawah).
-- **Inverted Core Actions** — Tombol primer menggunakan fill `#FFFFFF` dengan tipografi `#111827` agar kontras di atas wash horizon berwarna.
-- **Secondary Copy** — Detail tambahan, segmen penerbangan, dan metadata menggunakan `text-muted` (`#4B5563`) di permukaan terang untuk legibilitas AA.
+- **Canvas Gradation & Warm Base** — Viewport bertransisi linear dari `#F4F8FB` / `#FFFFFF` (atas) ke nada horizon `#9DBED8` atau emas hangat `#ECC485` (`--gold`).
+- **Core Button Actions (`--btn`)** — Tombol utama pill menggunakan fill `#F5FAFE` atau `#FFFFFF` dengan tipografi `#1F1F1F` (`--ink`) agar menonjol kontras di atas latar gradasi.
+- **High-Contrast Ink Typography (`--ink`)** — Teks judul, heading hero (`Book Your Dream Destination`), judul form, dan label penting menggunakan `#1F1F1F` untuk keterbacaan tajam dan elegan.
+- **Secondary Copy** — Detail tambahan, segmen penerbangan, dan metadata menggunakan `text-muted` (`#4B5563` atau `#64748B`) di permukaan terang untuk legibilitas AA.
 
 ---
 

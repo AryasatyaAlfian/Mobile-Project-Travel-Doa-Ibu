@@ -2,13 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/api_client.dart';
 import '../services/travel_api.dart';
 
 /// Elysian Horizon — Forgot Password Flow (Lupa Password)
-/// 100% Presisi sesuai prototipe Figma Gambar 1 - 5:
+/// Presisi sesuai prototipe Figma & kontrak backend Laravel:
 /// - Step 1: Input Email terdaftar -> Tombol "Kirim Email" (PROTOTYPE FORGOT PASS USER 5)
 /// - Step 2: Cek Email Anda -> Ilustrasi amplop biru ber-centang + Tombol "Lanjutkan" (PROTOTYPE FEEDBACK FORGOT PAS...)
-/// - Step 3: Verifikasi Kode 5 Digit -> 5 Kotak OTP interaktif + Timer hitung mundur 30 detik (PROTOTYPE FORGOT PASS USER 5)
+/// - Step 3: Verifikasi Kode 6 Digit -> 6 Kotak OTP interaktif + Timer hitung mundur 60 detik (PROTOTYPE FORGOT PASS USER 5)
 /// - Step 4: Reset Password -> Kata Sandi Baru & Konfirmasi Kata Sandi (PROTOTYPE FORGOT PASS USER 6)
 /// - Step 5: Berhasil Reset Password -> Feedback sukses kata sandi berhasil diubah + tombol "Masuk Sekarang"
 class ForgotPasswordPage extends StatefulWidget {
@@ -31,12 +32,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _emailController = TextEditingController();
   final _step1FormKey = GlobalKey<FormState>();
 
-  // Controllers Step 3 (5 Digit OTP)
+  // Controllers Step 3 (6 Digit OTP)
   final List<TextEditingController> _otpControllers =
-      List.generate(5, (_) => TextEditingController());
+      List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _otpFocusNodes =
-      List.generate(5, (_) => FocusNode());
-  int _countdownSeconds = 30;
+      List.generate(6, (_) => FocusNode());
+  int _countdownSeconds = 60;
   Timer? _countdownTimer;
 
   // Controllers Step 4 (New Password)
@@ -48,6 +49,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   bool _isLoading = false;
   String _targetEmail = '';
+  String? _resetToken;
 
   @override
   void dispose() {
@@ -64,9 +66,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
-  void _startCountdown() {
+  void _startCountdown([int seconds = 60]) {
     _countdownTimer?.cancel();
-    setState(() => _countdownSeconds = 30);
+    setState(() => _countdownSeconds = seconds);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownSeconds > 0) {
         if (mounted) setState(() => _countdownSeconds--);
@@ -76,74 +78,144 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
   }
 
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        backgroundColor: const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   // Action Step 1: Kirim Email
   Future<void> _submitStep1() async {
     if (!_step1FormKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await widget.api.requestPasswordReset(_emailController.text.trim());
-
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _targetEmail = _emailController.text.trim();
-      _currentStep = 2; // Pindah ke Step 2 (Cek Email Anda)
-    });
+    try {
+      final res = await widget.api.requestPasswordReset(_emailController.text.trim());
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _targetEmail = _emailController.text.trim();
+        _countdownSeconds = (res['resend_after'] as int?) ?? 60;
+        _currentStep = 2; // Pindah ke Step 2 (Cek Email Anda)
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Gagal mengirim email verifikasi. Silakan coba lagi.');
+    }
   }
 
   // Action Step 2: Lanjutkan ke Input OTP
   void _submitStep2() {
     setState(() {
-      _currentStep = 3; // Pindah ke Step 3 (5-Digit OTP)
+      _currentStep = 3; // Pindah ke Step 3 (6-Digit OTP)
     });
-    _startCountdown();
+    _startCountdown(_countdownSeconds > 0 ? _countdownSeconds : 60);
   }
 
   // Action Step 3: Verifikasi Kode OTP
   Future<void> _submitStep3() async {
-    final otpCode = _otpControllers.map((c) => c.text).join();
-    if (otpCode.length < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Silakan masukkan 5 digit kode verifikasi',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    final otpCode = _otpControllers.map((c) => c.text.trim()).join();
+    if (otpCode.length < 6) {
+      _showErrorSnackBar('Silakan masukkan 6 digit kode verifikasi');
       return;
     }
 
     setState(() => _isLoading = true);
-    await widget.api.verifyPasswordResetOtp(email: _targetEmail, otp: otpCode);
+    try {
+      final token = await widget.api.verifyPasswordResetOtp(email: _targetEmail, otp: otpCode);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _resetToken = token;
+        _currentStep = 4; // Pindah ke Step 4 (Reset Password)
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Gagal memverifikasi kode verifikasi. Silakan coba lagi.');
+    }
+  }
 
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _currentStep = 4; // Pindah ke Step 4 (Reset Password)
-    });
+  // Kirim Ulang Kode OTP
+  Future<void> _resendOtp() async {
+    if (_countdownSeconds > 0 || _isLoading) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final res = await widget.api.requestPasswordReset(_targetEmail);
+      if (!mounted) return;
+      final cooldown = (res['resend_after'] as int?) ?? 60;
+      setState(() => _isLoading = false);
+      _startCountdown(cooldown);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Kode verifikasi baru telah dikirimkan ke email Anda.',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Gagal mengirim ulang kode verifikasi. Coba lagi.');
+    }
   }
 
   // Action Step 4: Simpan Kata Sandi Baru
   Future<void> _submitStep4() async {
     if (!_step4FormKey.currentState!.validate()) return;
+    if (_resetToken == null || _resetToken!.isEmpty) {
+      _showErrorSnackBar('Token verifikasi tidak ditemukan. Silakan ulangi langkah verifikasi.');
+      return;
+    }
 
     setState(() => _isLoading = true);
-    final otpCode = _otpControllers.map((c) => c.text).join();
-    await widget.api.resetPassword(
-      email: _targetEmail,
-      password: _newPasswordController.text,
-      passwordConfirmation: _confirmPasswordController.text,
-      otp: otpCode,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _currentStep = 5; // Pindah ke Step 5 (Berhasil Reset Password)
-    });
+    try {
+      await widget.api.resetPassword(
+        email: _targetEmail,
+        resetToken: _resetToken!,
+        password: _newPasswordController.text,
+        passwordConfirmation: _confirmPasswordController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _currentStep = 5; // Pindah ke Step 5 (Berhasil Reset Password)
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Gagal mengatur ulang kata sandi. Silakan coba lagi.');
+    }
   }
 
   @override
@@ -501,7 +573,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   // ==========================================
-  // STEP 3: 5-Digit Verifikasi Kode (Gambar 3 Figma)
+  // STEP 3: 6-Digit Verifikasi Kode (Gambar 3 Figma & Backend)
   // ==========================================
   Widget _buildStep3OtpVerification() {
     return SingleChildScrollView(
@@ -557,7 +629,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Masukan 5 digit kode verifikasi yang sudah dikirimkan\nke email anda',
+            'Masukan 6 digit kode verifikasi yang sudah dikirimkan\nke email anda',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 11.5,
@@ -568,11 +640,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 36),
 
-          // Label: 5- Digit Verifikasi Kode (Persis sesuai teks Figma)
+          // Label: 6- Digit Verifikasi Kode (Disesuaikan dengan OTP Backend)
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
-              '5- Digit Verifikasi Kode',
+              '6- Digit Verifikasi Kode',
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -581,13 +653,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           ),
 
-          // 5 Kotak Input OTP
+          // 6 Kotak Input OTP
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(5, (index) {
+            children: List.generate(6, (index) {
               return SizedBox(
-                width: 52,
-                height: 52,
+                width: 44,
+                height: 50,
                 child: TextFormField(
                   controller: _otpControllers[index],
                   focusNode: _otpFocusNodes[index],
@@ -595,7 +667,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   textAlign: TextAlign.center,
                   maxLength: 1,
                   style: GoogleFonts.poppins(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1E293B),
                   ),
@@ -603,7 +675,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     counterText: '',
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFF64748B), width: 1.2),
@@ -614,7 +686,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ),
                   onChanged: (val) {
-                    if (val.isNotEmpty && index < 4) {
+                    if (val.isNotEmpty && index < 5) {
                       _otpFocusNodes[index + 1].requestFocus();
                     } else if (val.isEmpty && index > 0) {
                       _otpFocusNodes[index - 1].requestFocus();
@@ -648,19 +720,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 : MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
-                      onTap: () {
-                        _startCountdown();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Kode verifikasi baru telah dikirimkan ke email Anda',
-                              style: GoogleFonts.poppins(fontSize: 12.5),
-                            ),
-                            backgroundColor: const Color(0xFF5AAAE7),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
+                      onTap: _resendOtp,
                       child: Text(
                         'Kirim Ulang Kode Verifikasi',
                         style: GoogleFonts.poppins(
@@ -731,7 +791,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               obscureText: _obscureNewPassword,
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Kata sandi baru wajib diisi';
-                if (v.length < 6) return 'Kata sandi minimal 6 karakter';
+                if (v.length < 8) return 'Kata sandi minimal 8 karakter';
                 return null;
               },
               style: GoogleFonts.poppins(
