@@ -7,10 +7,6 @@ import 'maps_my_location_sheet.dart';
 import 'maps_track_muthawwif_view.dart';
 import 'widgets/maps_canvas_view.dart';
 
-/// Halaman Peta Pelacakan & Keselamatan Lapangan (Maps Page)
-/// Desain 1:1 Sesuai Figma Prototype:
-/// - media_1793605794368_8a5b8234.png (Tampilan Utama & Check In)
-/// - media_1793605822400_9de03761.png (Mode SOS Darurat Aktif)
 class MapsPage extends StatefulWidget {
   final TravelApi? api;
   final VoidCallback? onBackToHome;
@@ -31,15 +27,16 @@ class _MapsPageState extends State<MapsPage> {
   static const Color _green = Color(0xFF10B981);
   static const Color _red = Color(0xFFEF4444);
 
-  // Status Lokasi & Koordinat Lapangan
-  final String _currentAddress = 'Ibrahim Al Khalil St, Ajyad, Makkah 24231';
-  final String _currentCoords = '21.4189° N, 39.8246° E';
-  final double _currentLat = 21.4189;
-  final double _currentLng = 39.8246;
+  // Status Lokasi & Koordinat Lapangan (Dinamis dari Backend)
+  String _currentAddress = 'Ibrahim Al Khalil St, Ajyad, Makkah 24231';
+  String _currentCoords = '21.4189° N, 39.8246° E';
+  double _currentLat = 21.4189;
+  double _currentLng = 39.8246;
 
-  // Profil Jemaah
+  // Profil Jemaah & Rombongan (Dinamis dari Backend)
   String _userName = 'Zara';
   String _groupId = 'AGR8598';
+  String _muthawwifName = 'Ust. Ahmad Fauzi';
 
   // State SOS & Timer
   bool _isSosActive = false;
@@ -83,9 +80,35 @@ class _MapsPageState extends State<MapsPage> {
           final grp = tracker['group'] as Map<String, dynamic>;
           if (grp['code'] != null) {
             _groupId = grp['code'].toString();
+          } else if (grp['name'] != null) {
+            _groupId = grp['name'].toString();
+          }
+        }
+        if (tracker['last_location'] != null) {
+          final loc = tracker['last_location'] as Map<String, dynamic>;
+          if (loc['latitude'] != null && loc['longitude'] != null) {
+            _currentLat = (loc['latitude'] as num).toDouble();
+            _currentLng = (loc['longitude'] as num).toDouble();
+            _currentCoords =
+                '${_currentLat.toStringAsFixed(4)}° N, ${_currentLng.toStringAsFixed(4)}° E';
+          }
+          if (loc['address'] != null && loc['address'].toString().isNotEmpty) {
+            _currentAddress = loc['address'].toString();
+          } else if (loc['label'] != null && loc['label'].toString().isNotEmpty) {
+            _currentAddress = loc['label'].toString();
           }
         }
       });
+    } catch (_) {}
+
+    try {
+      final muth = await widget.api!.myMuthawwif();
+      if (!mounted) return;
+      if (muth != null && muth.name.isNotEmpty) {
+        setState(() {
+          _muthawwifName = muth.name;
+        });
+      }
     } catch (_) {}
   }
 
@@ -103,13 +126,14 @@ class _MapsPageState extends State<MapsPage> {
       });
     });
 
-    // Panggil API Backend /me/sos
+    // Panggil API Backend POST /api/v1/me/sos
     widget.api?.sendSos(
       latitude: _currentLat,
       longitude: _currentLng,
       message: 'Panggilan Darurat Jemaah Lapangan - Mohon Bantuan Mutawwif Segera!',
     );
 
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -129,6 +153,7 @@ class _MapsPageState extends State<MapsPage> {
       _sosDurationSeconds = 0;
     });
 
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -196,473 +221,549 @@ class _MapsPageState extends State<MapsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Jarak aman agar tombol pulau (Group, SOS, Person) memiliki ruang minimal 20px
+    // di atas navbar mengambang di main.dart (tinggi 57 + margin bawah 17)
+    final creamBottomPadding = 94.0 + bottomInset;
+    // Tinggi total container krem: padding atas (16) + tinggi tombol SOS (72) + creamBottomPadding
+    final creamHeight = 88.0 + creamBottomPadding;
+    // Posisi kartu melayang (Check In atau SOS aktif) tepat 16px di atas puncak container krem
+    final floatingCardBottom = creamHeight + 16.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // 1. Peta Interaktif Canvas (100% Free & Built-in Flutter)
-          Positioned.fill(
-            child: MapsCanvasView(
-              isSosActive: _isSosActive,
-              showMuthawwif: false,
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Peta Interaktif Canvas (Tile Provider Gratis CartoDB / OSM)
+            Positioned.fill(
+              child: MapsCanvasView(
+                isSosActive: _isSosActive,
+                showMuthawwif: false,
+                userLat: _currentLat,
+                userLng: _currentLng,
+              ),
             ),
-          ),
 
-          // 2. Banner SOS Terkirim di Bagian Teratas (Jika SOS Aktif)
-          if (_isSosActive)
+            // 2. Top Header (SOS Mode vs Normal Mode Sesuai Figma 1:1)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  MediaQuery.of(context).padding.top + 8,
-                  16,
-                  12,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSosActive) ...[
+                        // Floating Banner SOS Terkirim (Sesuai Figma Lampiran SOS Aktif)
+                        _buildSosTopBanner(),
+                        const SizedBox(height: 10),
+                      ] else ...[
+                        // Chip Profil Jemaah + Notifikasi + Menu (Sesuai Figma Normal)
+                        _buildNormalTopBar(),
+                        const SizedBox(height: 12),
+                      ],
+                      // Floating Card Alamat & Live Tracking
+                      _buildAddressCard(),
+                    ],
+                  ),
                 ),
+              ),
+            ),
+
+            // 3. Bottom Cream Container & SOS Action Island (Sesuai Figma 1:1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(24, 16, 24, creamBottomPadding),
                 decoration: const BoxDecoration(
-                  color: _red,
+                  color: Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0x3F000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+                      color: Color(0x1F000000),
+                      blurRadius: 20,
+                      offset: Offset(0, -4),
                     ),
                   ],
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'SOS TERKIRIM',
+                    // Tombol Kiri: Lacak Rombongan & Mutawwif
+                    _buildIslandCircleButton(
+                      icon: Icons.groups_rounded,
+                      tooltip: 'Lacak Mutawwif & Rombongan',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MapsTrackMuthawwifView(
+                              api: widget.api,
+                              groupId: _groupId,
+                              userLat: _currentLat,
+                              userLng: _currentLng,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Tombol Tengah: SOS Utama (Besar & Merah dengan glow halo)
+                    GestureDetector(
+                      onTap: _isSosActive ? null : _triggerSos,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: _red,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _red.withValues(alpha: 0.45),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            _isSosActive ? '✓\nTerkirim' : 'SOS',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: _isSosActive ? 12 : 18,
+                              fontWeight: FontWeight.w800,
                               color: Colors.white,
-                              letterSpacing: 0.5,
+                              height: 1.1,
                             ),
                           ),
-                          Text(
-                            'Lokasi Sudah Dikirimkan ke Mutawwif Rombongan',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                    ),
+
+                    // Tombol Kanan: Lokasi Saya
+                    _buildIslandCircleButton(
+                      icon: Icons.person_pin_circle_rounded,
+                      tooltip: 'Lokasi Saya',
+                      onTap: () {
+                        MapsMyLocationSheet.show(
+                          context,
+                          api: widget.api,
+                          address: _currentAddress,
+                          coordinates: _currentCoords,
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
             ),
 
-          // 3. Top Floating Bar (Avatar chip, Notifikasi, Menu)
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: _isSosActive ? 56 : 10,
-                left: 16,
-                right: 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      // Chip Profil Jemaah
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1A000000),
-                              blurRadius: 12,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
+            // 4. Floating Check In Button (HANYA saat SOS tidak aktif)
+            if (!_isSosActive)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: floatingCardBottom,
+                child: Center(
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: _isSendingLocation ? null : _handleCheckIn,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Color(0xFFF1F5F9),
-                              child: Icon(Icons.person, color: Color(0xFF64748B), size: 20),
-                            ),
+                            if (_isSendingLocation)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            else
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF3B82F6),
+                                size: 18,
+                              ),
                             const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hi, $_userName',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: _ink,
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _groupId,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: _muted,
-                                      ),
-                                    ),
-                                    const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 14,
-                                      color: _muted,
-                                    ),
-                                  ],
-                                ),
-                              ],
+                            Text(
+                              'Check In',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF3B82F6),
+                              ),
                             ),
-                            const SizedBox(width: 4),
                           ],
                         ),
                       ),
-                      const Spacer(),
+                    ),
+                  ),
+                ),
+              ),
 
-                      // Tombol Notifikasi
-                      _buildTopRoundButton(
-                        icon: Icons.notifications_none_rounded,
-                        showBadge: true,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Tidak ada notifikasi darurat baru.',
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-
-                      // Tombol Menu Hamburger
-                      _buildTopRoundButton(
-                        icon: Icons.menu_rounded,
-                        onTap: () {
-                          MapsMyLocationSheet.show(
-                            context,
-                            api: widget.api,
-                            address: _currentAddress,
-                            coordinates: _currentCoords,
-                          );
-                        },
+            // 5. Floating SOS Alert Card (HANYA saat SOS aktif - Berada di atas container krem)
+            if (_isSosActive)
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: floatingCardBottom,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _red.withValues(alpha: 0.2)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 16,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-
-                  // Floating Card Alamat & Live Tracking
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                        child: const Center(
+                          child: Icon(Icons.warning_amber_rounded, color: _red, size: 22),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Text(
-                                _currentAddress,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: _ink,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'SOS aktif',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _ink,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFE4E6),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _formatTimer(_sosDurationSeconds),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _red,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: _green,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
+                            const SizedBox(height: 2),
                             Text(
-                              'Live Tracking',
+                              'Menunggu respon mutawwif...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
                                 fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: _green,
+                                color: _muted,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Coordinates: $_currentCoords',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: _muted,
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _ink,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // 4. Floating Check In Button (Tepat di atas peta)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: _isSosActive ? 230 : 130,
-            child: Center(
-              child: Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                elevation: 4,
-                shadowColor: Colors.black.withValues(alpha: 0.15),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(30),
-                  onTap: _isSendingLocation ? null : _handleCheckIn,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_isSendingLocation)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF3B82F6),
-                            size: 18,
-                          ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Check In',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3B82F6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 5. Floating SOS Alert Card (Jika SOS Aktif)
-          if (_isSosActive)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 120,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _red.withValues(alpha: 0.3)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x22000000),
-                      blurRadius: 16,
-                      offset: Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: _red.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.emergency_rounded, color: _red, size: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'SOS Aktif',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: _red,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatTimer(_sosDurationSeconds),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: _ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            'Menunggu respon mutawwif...',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: _muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: _red,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: _red),
-                        ),
-                      ),
-                      onPressed: _cancelSos,
-                      child: Text(
-                        'Batalkan',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // 6. Bottom Floating Island Dock (Figma Frame: Group, SOS, User)
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 24,
-            child: Container(
-              height: 72,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1F000000),
-                    blurRadius: 18,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  // Tombol Kiri: Lacak Rombongan & Mutawwif
-                  _buildIslandCircleButton(
-                    icon: Icons.groups_rounded,
-                    tooltip: 'Lacak Mutawwif & Rombongan',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MapsTrackMuthawwifView(
-                            api: widget.api,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // Tombol Tengah: SOS Utama (Besar & Merah)
-                  GestureDetector(
-                    onTap: _isSosActive ? null : _triggerSos,
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: _red,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _red.withValues(alpha: 0.45),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Center(
+                        onPressed: _cancelSos,
                         child: Text(
-                          _isSosActive ? '✓\nAktif' : 'SOS',
-                          textAlign: TextAlign.center,
+                          'Batalkan',
                           style: GoogleFonts.poppins(
-                            fontSize: _isSosActive ? 11 : 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            height: 1.1,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _ink,
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Top Banner saat SOS Aktif Sesuai Figma Prototype
+  Widget _buildSosTopBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: _ink,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'SOS TERKIRIM',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _muted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'Baru saja',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: _muted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Lokasi Sudah Dikirimkan ke Mutawwif',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Tetap tenang dan tunggu di tempat. $_muthawwifName akan segera menghubungi Anda.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: _muted,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Top Bar Normal: Avatar Profil + Bell Notifikasi + Menu Hamburger
+  Widget _buildNormalTopBar() {
+    return Row(
+      children: [
+        // Chip Profil Jemaah
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1A000000),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFFF1F5F9),
+                child: Icon(Icons.person, color: Color(0xFF64748B), size: 20),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hi, $_userName',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
                     ),
                   ),
-
-                  // Tombol Kanan: Lokasi Saya
-                  _buildIslandCircleButton(
-                    icon: Icons.person_pin_circle_rounded,
-                    tooltip: 'Lokasi Saya',
-                    onTap: () {
-                      MapsMyLocationSheet.show(
-                        context,
-                        api: widget.api,
-                        address: _currentAddress,
-                        coordinates: _currentCoords,
-                      );
-                    },
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _groupId,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: _muted,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 14,
+                        color: _muted,
+                      ),
+                    ],
                   ),
                 ],
               ),
+              const SizedBox(width: 4),
+            ],
+          ),
+        ),
+        const Spacer(),
+
+        // Tombol Notifikasi
+        _buildTopRoundButton(
+          icon: Icons.notifications_none_rounded,
+          showBadge: true,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Tidak ada notifikasi darurat baru.',
+                  style: GoogleFonts.poppins(fontSize: 12),
+                ),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+
+        // Tombol Menu Hamburger
+        _buildTopRoundButton(
+          icon: Icons.menu_rounded,
+          onTap: () {
+            MapsMyLocationSheet.show(
+              context,
+              api: widget.api,
+              address: _currentAddress,
+              coordinates: _currentCoords,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Card Alamat & Status Live Tracking
+  Widget _buildAddressCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _currentAddress,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: _green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Live Tracking',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Coordinates: $_currentCoords',
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              color: _muted,
             ),
           ),
         ],
