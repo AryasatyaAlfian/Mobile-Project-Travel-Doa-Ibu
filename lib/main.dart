@@ -10,9 +10,11 @@ import 'services/travel_api.dart';
 import 'ui/homepage_jemaah.dart';
 import 'ui/initial_landing_page.dart';
 import 'ui/landing_page.dart';
-import 'ui/muthawwif_guard_page.dart';
+import 'ui/maps_page.dart';
 import 'ui/package_detail_page.dart';
 import 'ui/profile_page.dart';
+import 'ui/ticket_page.dart';
+import 'ui/widgets/skeleton_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -177,9 +179,9 @@ class _MainScreenState extends State<MainScreen> {
         },
       );
     } else if (_currentIndex == 1) {
-      currentBody = PackageListPage(api: widget.api);
+      currentBody = const TicketPage(key: ValueKey('ticket_page'));
     } else if (_currentIndex == 2) {
-      currentBody = MuthawwifGuardPage(
+      currentBody = MapsPage(
         api: widget.api,
         onBackToHome: () => setState(() => _currentIndex = 0),
       );
@@ -195,28 +197,39 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       extendBody: true,
-      body: currentBody,
-      // Frame 739 — navbar melayang 250 x 57, rgba(13,10,10,0.15), radius 100
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: KeyedSubtree(
+          key: ValueKey<int>(_currentIndex),
+          child: currentBody,
+        ),
+      ),
+      // Frame 739 — navbar melayang 250 x 57 terkunci di bawah layar, radius 100
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 17),
-          child: Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(100),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  width: 250,
-                  height: 57,
-                  color: const Color.fromRGBO(13, 10, 10, 0.15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
-                      _buildNavIcon(1, Icons.luggage_outlined, Icons.luggage),
-                      _buildNavIcon(2, Icons.receipt_long_outlined, Icons.receipt_long),
-                      _buildNavIcon(3, Icons.person_outline, Icons.person),
-                    ],
+          child: SizedBox(
+            height: 57,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(100),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    width: 250,
+                    height: 57,
+                    color: const Color.fromRGBO(13, 10, 10, 0.15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildNavIcon(0, Icons.home_outlined, Icons.home_rounded),
+                        _buildNavIcon(1, Icons.confirmation_num_outlined, Icons.confirmation_num),
+                        _buildNavIcon(2, Icons.map_outlined, Icons.map_rounded),
+                        _buildNavIcon(3, Icons.person_outline, Icons.person),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -421,7 +434,29 @@ class _PackageListPageState extends State<PackageListPage> {
                 future: _future,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator(color: AppColors.tealPrimary));
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: 4,
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) => Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonBox(height: 140, borderRadius: 12),
+                            SizedBox(height: 12),
+                            SkeletonBox(width: 180, height: 18, borderRadius: 4),
+                            SizedBox(height: 8),
+                            SkeletonBox(width: 100, height: 14, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    );
                   }
                   if (snapshot.hasError) {
                     return ListView(
