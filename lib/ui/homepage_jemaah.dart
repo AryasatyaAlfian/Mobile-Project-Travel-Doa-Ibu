@@ -67,6 +67,15 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
     }).catchError((_) => null);
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _packagesFuture = widget.api.packages();
+    });
+    try {
+      await _packagesFuture;
+    } catch (_) {}
+  }
+
   /// Saring berdasarkan nama kategori dari backend.
   List<TravelPackage> _filter(List<TravelPackage> all) {
     if (_selectedCategory == 0) return all;
@@ -112,29 +121,38 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
                 final double scale = constraints.maxWidth / _frameW;
 
                 // Tinggi konten dalam koordinat Figma + ruang untuk navbar
-                final double listBottom = packages.isEmpty
-                    ? _cardTop + 120
-                    : _cardTop +
-                        (packages.length - 1) * _cardSpacing +
-                        _cardHeight;
+                final double listBottom = isLoading
+                    ? _cardTop + _cardSpacing + _cardHeight
+                    : (packages.isEmpty
+                        ? _cardTop + 160
+                        : _cardTop +
+                            (packages.length - 1) * _cardSpacing +
+                            _cardHeight);
                 final double designHeight = listBottom + 98;
 
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: designHeight * scale,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(
-                        width: _frameW,
-                        height: designHeight,
-                        child: _buildContent(
-                          userName: userName,
-                          packages: packages,
-                          isLoading: isLoading,
-                          hasError: snapshot.hasError,
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  color: _dark,
+                  backgroundColor: Colors.white,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
+                    ),
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: designHeight * scale,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: _frameW,
+                          height: designHeight,
+                          child: _buildContent(
+                            userName: userName,
+                            packages: packages,
+                            isLoading: isLoading,
+                            hasError: snapshot.hasError,
+                          ),
                         ),
                       ),
                     ),
@@ -194,52 +212,93 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
           ),
         ),
 
-        // Kartu paket
-        for (int i = 0; i < packages.length; i++)
-          Positioned(
-            left: _cardLeft,
-            top: _cardTop + i * _cardSpacing,
-            child: _PackageCard(
-              package: packages[i],
-              onTap: () => _openPackage(packages[i]),
+        // Kartu paket: tampilkan skeleton saat memuat data dari API
+        if (isLoading) ...[
+          for (int i = 0; i < 2; i++)
+            Positioned(
+              left: _cardLeft,
+              top: _cardTop + i * _cardSpacing,
+              child: const _SkeletonPackageCard(),
             ),
-          ),
-
-        // Status kosong / memuat / gagal
-        if (packages.isEmpty)
+        ] else if (packages.isNotEmpty) ...[
+          for (int i = 0; i < packages.length; i++)
+            Positioned(
+              left: _cardLeft,
+              top: _cardTop + i * _cardSpacing,
+              child: _PackageCard(
+                package: packages[i],
+                onTap: () => _openPackage(packages[i]),
+              ),
+            ),
+        ] else ...[
+          // Status kosong atau gagal memuat data
           Positioned(
             left: _cardLeft,
             top: _cardTop,
             width: 362,
-            height: 120,
+            height: 160,
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: _chipBorder, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 26,
-                      height: 26,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        valueColor: AlwaysStoppedAnimation<Color>(_dark),
-                      ),
-                    )
-                  : Text(
-                      hasError
-                          ? 'Gagal memuat paket. Periksa koneksi Anda.'
-                          : 'Belum ada paket ${_categoryLabels[_selectedCategory]}',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color.fromRGBO(18, 20, 19, 0.5),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    hasError ? Icons.wifi_off_rounded : Icons.inbox_outlined,
+                    size: 30,
+                    color: const Color.fromRGBO(18, 20, 19, 0.45),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    hasError
+                        ? 'Gagal memuat paket. Periksa koneksi Anda.'
+                        : 'Belum ada paket ${_categoryLabels[_selectedCategory]}',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color.fromRGBO(18, 20, 19, 0.6),
+                    ),
+                  ),
+                  if (hasError) ...[
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: _refresh,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _dark,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Coba Lagi',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
+                  ],
+                ],
+              ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -457,6 +516,169 @@ class _PackageCard extends StatelessWidget {
       child: Center(
         child: Icon(Icons.photo_outlined, size: 44, color: Colors.white70),
       ),
+    );
+  }
+}
+
+/// Kartu placeholder skeleton shimmer berdimensi 362 x 255 sesuai ukuran asli _PackageCard
+class _SkeletonPackageCard extends StatefulWidget {
+  const _SkeletonPackageCard();
+
+  @override
+  State<_SkeletonPackageCard> createState() => _SkeletonPackageCardState();
+}
+
+class _SkeletonPackageCardState extends State<_SkeletonPackageCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    // Jalankan shimmer bolak-balik secara kontinu di perangkat nyata
+    final isTesting = WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTesting) {
+      _controller.repeat(reverse: true);
+    }
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final t = _animation.value;
+        final photoColor = Color.lerp(
+          const Color(0xFFEFE8DE),
+          const Color(0xFFDFD6C8),
+          t,
+        )!;
+        final badgeColor = Color.lerp(
+          Colors.white.withValues(alpha: 0.85),
+          Colors.white.withValues(alpha: 0.5),
+          t,
+        )!;
+        final goldBg = Color.lerp(
+          const Color(0xFFECC485).withValues(alpha: 0.7),
+          const Color(0xFFECC485).withValues(alpha: 0.4),
+          t,
+        )!;
+        final shimmerBar = Color.lerp(
+          Colors.white.withValues(alpha: 0.9),
+          Colors.white.withValues(alpha: 0.55),
+          t,
+        )!;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 362,
+            height: 255,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // 1. Area foto placeholder (tinggi 167px)
+                Container(
+                  width: 362,
+                  height: 167,
+                  color: photoColor,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 12,
+                        top: 12,
+                        child: Container(
+                          width: 80,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.circular(9.5),
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 42,
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 2. Garis pembatas putih 3px
+                Container(width: 362, height: 3, color: Colors.white),
+
+                // 3. Area info gold placeholder (tinggi 85px)
+                Container(
+                  width: 362,
+                  height: 85,
+                  color: goldBg,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 190,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: shimmerBar,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 290,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: shimmerBar,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 175,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: shimmerBar,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -30,6 +30,11 @@ class AppColors {
   static const Color badgeBg = Color(0xFFE0F0EE);
   static const Color badgeText = Color(0xFF2A8C80);
 
+  // 🎨 Palet sesuai variabel CSS desain (Initial Landing, Landing, Login, dll)
+  static const Color gold = Color(0xFFECC485); // --gold
+  static const Color btn = Color(0xFFF5FAFE);  // --btn
+  static const Color ink = Color(0xFF1F1F1F);  // --ink
+
   // 🌌 Elysian Horizon Design Tokens (DESIGN.md)
   static const Color elysianPrimary = Color(0xFF9DBED8);
   static const Color elysianSecondary = Color(0xFF111827);
@@ -67,7 +72,6 @@ class AppColors {
   );
 
   // Aliases for seamless semantic mapping across components
-  static const Color gold = tealPrimary;
   static const Color goldDark = tealDark;
   static const Color goldLight = tealPrimary;
   static const Color goldBorder = border;

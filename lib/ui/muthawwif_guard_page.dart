@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/models.dart';
 import '../services/travel_api.dart';
+import 'widgets/skeleton_view.dart';
 
 /// Elysian Horizon — Route Guard Bimbingan Muthawwif
 /// Memproteksi halaman: jika jemaah belum memiliki muthawwif pembimbing (contoh: persona Nadia),
@@ -138,9 +139,7 @@ class _MuthawwifGuardPageState extends State<MuthawwifGuardPage> {
         future: _muthawwifFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting || _isSwitchingPersona) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4E9FE5)),
-            );
+            return _buildSkeletonMuthawwifView();
           }
 
           final muthawwif = snapshot.data;
@@ -530,6 +529,72 @@ class _MuthawwifGuardPageState extends State<MuthawwifGuardPage> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Skeleton placeholder saat memuat data profil muthawwif
+  Widget _buildSkeletonMuthawwifView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFB0C5D7), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: const [
+                SkeletonCircle(size: 80),
+                SizedBox(height: 16),
+                SkeletonBox(width: 170, height: 20, borderRadius: 6),
+                SizedBox(height: 8),
+                SkeletonBox(width: 210, height: 14, borderRadius: 4),
+                SizedBox(height: 16),
+                Divider(height: 1, color: Color(0xFFE2E8F0)),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    SkeletonBox(width: 80, height: 36, borderRadius: 12),
+                    SkeletonBox(width: 80, height: 36, borderRadius: 12),
+                    SkeletonBox(width: 80, height: 36, borderRadius: 12),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFB0C5D7), width: 1.2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                SkeletonBox(width: 150, height: 18, borderRadius: 4),
+                SizedBox(height: 14),
+                SkeletonBox(height: 48, borderRadius: 14),
+                SizedBox(height: 10),
+                SkeletonBox(height: 48, borderRadius: 14),
+              ],
+            ),
           ),
         ],
       ),

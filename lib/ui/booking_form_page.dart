@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/app_colors.dart';
 import '../models/models.dart';
+import '../services/ticket_service.dart';
 import '../services/travel_api.dart';
 
 class BookingFormPage extends StatefulWidget {
@@ -102,6 +103,13 @@ class _BookingFormPageState extends State<BookingFormPage> {
       );
 
       final message = await widget.api.submitBooking(request);
+
+      // Simpan tiket baru ke TicketService (status 'new' / Menunggu Pembayaran sesuai backend)
+      await TicketService.instance.addBookingTicket(
+        packageName: widget.package.name,
+        customerName: _nameController.text.trim(),
+        imageUrl: widget.package.image,
+      );
 
       if (!mounted) return;
       _showSuccessDialog(message);
