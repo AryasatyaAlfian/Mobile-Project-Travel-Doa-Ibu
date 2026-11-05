@@ -31,7 +31,7 @@ class GoogleSignInAuthService implements GoogleAuthService {
     sdk: _GoogleSignInSdk(),
   );
   static const serverClientId =
-      '405719934940-bel9ujgn18jgaiuhpivk17e9und4872a.apps.googleusercontent.com';
+      '782459815456-lh9l70kc3eqoblskg4gc67c6t6kg27dt.apps.googleusercontent.com';
 
   final GoogleAuthSdk _sdk;
   Future<void>? _initialization;
