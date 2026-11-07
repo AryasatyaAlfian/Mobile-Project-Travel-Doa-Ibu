@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/api_client.dart';
 import '../services/travel_api.dart';
+import 'widgets/design_frame.dart';
 import '../services/google_auth_service.dart';
 import 'login_page.dart';
 
@@ -286,17 +287,15 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
-      resizeToAvoidBottomInset: false,
+      // Body mengecil saat keyboard muncul, lalu DesignFrame bisa di-scroll ke kolom yang sedang diisi.
+      resizeToAvoidBottomInset: true,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),
-        child: SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: _frameW,
-              height: _frameH,
-              child: Stack(
+        // Skala mengikuti lebar layar; di landscape/tablet halaman bisa di-scroll, bukan mengecil.
+        child: DesignFrame(
+          designSize: const Size(_frameW, _frameH),
+          child: Stack(
                 clipBehavior: Clip.hardEdge,
                 children: [
                   // BUAT AKUN
@@ -567,8 +566,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ],
-              ),
-            ),
           ),
         ),
       ),

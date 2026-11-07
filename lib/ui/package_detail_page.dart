@@ -92,7 +92,8 @@ class _PackageDetailPageState extends State<PackageDetailPage> with SingleTicker
                           child: Row(
                             children: [
                               if (data.category != null)
-                                Container(
+                                Flexible(
+                                  child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: AppColors.surfaceWhite,
@@ -101,12 +102,15 @@ class _PackageDetailPageState extends State<PackageDetailPage> with SingleTicker
                                   ),
                                   child: Text(
                                     data.category!.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: AppColors.tealPrimary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
+                                ),
                                 ),
                               if (data.duration != null) ...[
                                 const SizedBox(width: 8),
@@ -163,9 +167,13 @@ class _PackageDetailPageState extends State<PackageDetailPage> with SingleTicker
                               (_) => const Icon(Icons.star_rounded, size: 16, color: AppColors.tealPrimary),
                             ),
                             const SizedBox(width: 6),
-                            const Text(
-                              '5.0 (Rating Jamaah)',
-                              style: TextStyle(color: AppColors.tealDark, fontSize: 12, fontWeight: FontWeight.bold),
+                            const Flexible(
+                              child: Text(
+                                '5.0 (Rating Jamaah)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: AppColors.tealDark, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ],
                         ),
@@ -521,24 +529,33 @@ class _PackageDetailPageState extends State<PackageDetailPage> with SingleTicker
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Harga Mulai Dari',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                ),
-                Text(
-                  package.formattedPrice,
-                  style: const TextStyle(
-                    color: AppColors.tealPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+            // Harga mengecil bila layar sempit / teks sistem besar, bukan menabrak tombol.
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Harga Mulai Dari',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
-                ),
-              ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      package.formattedPrice,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: AppColors.tealPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
             InkWell(
               onTap: () {
                 Navigator.push(
@@ -572,6 +589,7 @@ class _PackageDetailPageState extends State<PackageDetailPage> with SingleTicker
                     SizedBox(width: 8),
                     Text(
                       'Pesan Sekarang',
+                      maxLines: 1,
                       style: TextStyle(
                         color: AppColors.white,
                         fontWeight: FontWeight.bold,

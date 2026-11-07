@@ -29,6 +29,12 @@ class TestGoogleAuth implements GoogleAuthService {
 }
 
 Future<void> openAuthPage(WidgetTester tester, Widget page) async {
+  // Ukuran HP portrait: seluruh bingkai desain terlihat tanpa scroll. Layar uji
+  // bawaan 800×600 (landscape) membuat halaman di-scroll — itu diuji terpisah di
+  // responsive_layout_test.dart.
+  tester.view.physicalSize = const Size(412, 915);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
       home: Builder(

@@ -81,8 +81,9 @@ class ProfilePaypalPage extends StatelessWidget {
                       color: _bg,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    // Bisa di-scroll supaya tombol tetap terjangkau di HP landscape.
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                       child: Column(
                         children: [
                           const SizedBox(height: 60),
@@ -254,8 +255,9 @@ class ProfilePaypalSuccessPage extends StatelessWidget {
                       color: _bg,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    // Bisa di-scroll supaya tombol tetap terjangkau di HP landscape.
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                       child: Column(
                         children: [
                           const SizedBox(height: 60),

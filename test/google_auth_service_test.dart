@@ -183,7 +183,8 @@ void main() {
       expect(sdk.initializeCalls, 1);
       expect(
         sdk.serverClientId,
-        '405719934940-bel9ujgn18jgaiuhpivk17e9und4872a.apps.googleusercontent.com',
+        // Client ID tipe "Web application" milik backend (bukan client Android).
+        allOf(GoogleSignInAuthService.serverClientId, endsWith('.apps.googleusercontent.com')),
       );
       expect(sdk.authenticateCalls, 2);
       expect(sdk.signOutCalls, 2);

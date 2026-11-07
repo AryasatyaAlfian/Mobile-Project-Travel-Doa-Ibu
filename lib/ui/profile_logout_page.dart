@@ -103,7 +103,8 @@ class _ProfileLogoutPageState extends State<ProfileLogoutPage> {
                       color: _bg,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                     ),
-                    child: Padding(
+                    // Bisa di-scroll supaya tombol tetap terjangkau di HP landscape.
+                    child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
                         children: [
@@ -218,6 +219,7 @@ class _ProfileLogoutPageState extends State<ProfileLogoutPage> {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),

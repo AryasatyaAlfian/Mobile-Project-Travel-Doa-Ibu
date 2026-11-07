@@ -14,6 +14,7 @@ import 'ui/maps_page.dart';
 import 'ui/package_detail_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/ticket_page.dart';
+import 'ui/widgets/responsive_shell.dart';
 import 'ui/widgets/skeleton_view.dart';
 
 void main() {
@@ -44,6 +45,8 @@ class _MyAppState extends State<MyApp> {
       title: 'Travel Doa Ibu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      // Tata letak tetap rapi di HP, HP lipat, tablet, dan saat layar diputar.
+      builder: ResponsiveShell.builder,
       home: RootNavigation(api: _api),
     );
   }

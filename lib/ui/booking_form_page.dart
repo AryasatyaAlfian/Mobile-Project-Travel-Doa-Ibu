@@ -383,15 +383,21 @@ class _BookingFormPageState extends State<BookingFormPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.group_outlined, color: AppColors.tealPrimary, size: 20),
-              SizedBox(width: 12),
-              Text(
-                'Jumlah Peserta',
-                style: TextStyle(color: AppColors.textDark, fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ],
+          const Expanded(
+            child: Row(
+              children: [
+                Icon(Icons.group_outlined, color: AppColors.tealPrimary, size: 20),
+                SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Jumlah Peserta',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AppColors.textDark, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
           ),
           Row(
             children: [
@@ -507,12 +513,16 @@ class _BookingFormPageState extends State<BookingFormPage> {
                 color: isSelected ? AppColors.white : AppColors.textBody,
               ),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.white : AppColors.textBody,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.white : AppColors.textBody,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -555,13 +565,17 @@ class _BookingFormPageState extends State<BookingFormPage> {
                   children: [
                     Icon(Icons.send_rounded, color: AppColors.white, size: 18),
                     SizedBox(width: 8),
-                    Text(
+                    Flexible(
+                      child: Text(
                       'Kirim Permintaan Reservasi',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppColors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
+                    ),
                     ),
                   ],
                 ),
