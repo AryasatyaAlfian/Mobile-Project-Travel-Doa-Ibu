@@ -33,6 +33,7 @@ import 'package:mobile_project_doa_ibu/ui/initial_landing_page.dart';
 import 'package:mobile_project_doa_ibu/ui/landing_page.dart';
 import 'package:mobile_project_doa_ibu/ui/login_page.dart';
 import 'package:mobile_project_doa_ibu/ui/register_page.dart';
+import 'package:mobile_project_doa_ibu/ui/widgets/design_frame.dart';
 import 'package:mobile_project_doa_ibu/ui/widgets/responsive_shell.dart';
 
 /// Ukuran layar (logical px, devicePixelRatio 1) yang harus didukung aplikasi.
@@ -170,13 +171,14 @@ void main() {
       testWidgets('$name di HP landscape tetap terbaca & bisa di-scroll (tidak mengecil)', (tester) async {
         // Pembanding: ukuran kolom isian di HP portrait (sesuai desain).
         await pumpApp(tester, const Size(412, 915), isLogin ? LoginPage(api: fakeApi()) : RegisterPage(api: fakeApi()));
-        final portraitHeight = tester.getSize(find.byType(TextField).first).height;
+        final portraitHeight = tester.getRect(find.byType(TextField).first).height;
 
         await pumpApp(tester, const Size(780, 360), isLogin ? LoginPage(api: fakeApi()) : RegisterPage(api: fakeApi()));
 
         final field = find.byType(TextField).first;
         // Dulu (FittedBox contain) di landscape kolom menyusut ±2,5× lebih kecil dari portrait.
-        expect(tester.getSize(field).height, greaterThanOrEqualTo(portraitHeight), reason: 'kolom isian tidak boleh mengecil di landscape');
+        // Sekarang paling kecil DesignFrame.minScale (0,85) dibanding skala portrait 1,025.
+        expect(tester.getRect(field).height, greaterThanOrEqualTo(portraitHeight * 0.8), reason: 'kolom isian tidak boleh mengecil di landscape');
         expect(find.byType(Scrollable), findsWidgets);
 
         // Tombol Google di bagian bawah bisa dijangkau dengan scroll.
@@ -189,6 +191,7 @@ void main() {
         await pumpApp(tester, const Size(412, 915), isLogin ? LoginPage(api: fakeApi()) : RegisterPage(api: fakeApi()));
 
         final lastField = find.byType(TextField).last;
+        final widthBefore = tester.getRect(lastField).width;
         await tester.tap(lastField);
         tester.view.viewInsets = const FakeViewPadding(bottom: 420);
         addTearDown(tester.view.resetViewInsets);
@@ -196,9 +199,50 @@ void main() {
 
         final rect = tester.getRect(lastField);
         expect(rect.bottom, lessThanOrEqualTo(915 - 420), reason: 'kolom yang sedang diisi harus terlihat di atas keyboard');
+        expect(rect.width, widthBefore, reason: 'halaman tidak boleh mengecil saat keyboard muncul');
         expect(tester.takeException(), isNull);
       });
     }
+  });
+
+  group('Halaman berbingkai desain tampil utuh di tablet & HP lipat (tidak kebesaran/terpotong)', () {
+    const wideScreens = <String, Size>{
+      'tablet landscape': Size(1280, 800),
+      'tablet portrait': Size(800, 1280),
+      'HP lipat terbuka': Size(884, 1104),
+    };
+    final framed = <String, (Widget Function(), List<String>)>{
+      'Landing awal': (() => InitialLandingPage(api: fakeApi(), onStart: () {}), ['LOGIN', 'Daftar']),
+      'Login': (() => LoginPage(api: fakeApi()), ['Google']),
+      'Register': (() => RegisterPage(api: fakeApi()), ['Google']),
+    };
+
+    for (final page in framed.entries) {
+      for (final screen in wideScreens.entries) {
+        testWidgets('${page.key} — ${screen.key}', (tester) async {
+          await pumpApp(tester, screen.value, page.value.$1());
+          for (final label in page.value.$2) {
+            final rect = tester.getRect(find.text(label));
+            expect(rect.bottom, lessThanOrEqualTo(screen.value.height), reason: '"$label" harus terlihat tanpa scroll');
+            expect(rect.left, greaterThanOrEqualTo(0));
+            expect(rect.right, lessThanOrEqualTo(screen.value.width));
+          }
+          // Bingkai tidak lebih tinggi dari layar → tidak ada yang terpotong di bawah.
+          final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+          expect(scrollable.position.maxScrollExtent, 0, reason: 'seluruh desain muat di layar');
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
+    testWidgets('Landing awal di HP landscape tetap terbaca & tombol LOGIN bisa dijangkau', (tester) async {
+      await pumpApp(tester, const Size(780, 360), InitialLandingPage(api: fakeApi(), onStart: () {}));
+      final width = tester.getRect(find.descendant(of: find.byType(DesignFrame), matching: find.byType(FittedBox)).first).width;
+      expect(width, greaterThanOrEqualTo(414 * DesignFrame.minScale - 1), reason: 'artboard tidak mengecil di bawah skala minimum');
+      await tester.scrollUntilVisible(find.text('LOGIN'), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('LOGIN').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Tidak ada overflow di semua ukuran layar', () {

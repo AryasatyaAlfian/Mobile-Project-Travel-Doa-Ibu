@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/travel_api.dart';
 import 'login_page.dart';
 import 'register_page.dart';
+import 'widgets/design_frame.dart';
 
 /// Elysian Horizon — Initial Landing Page (Layar Pembuka)
 ///
@@ -104,17 +105,13 @@ class _InitialLandingPageState extends State<InitialLandingPage> {
       // Warna dasar = ujung bawah gradient, agar sisa ruang di layar yang
       // lebih tinggi dari artboard menyatu tanpa garis batas.
       backgroundColor: _gold,
-      body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        child: FittedBox(
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: _designWidth,
-            height: _designHeight,
-            child: _buildArtboard(),
-          ),
-        ),
+      // Artboard tampil utuh (sampai tombol LOGIN & Daftar) di tablet/HP lipat, dan bisa
+      // di-scroll di HP landscape. Gradient yang sama dipasang selebar layar agar sisi
+      // kiri/kanan artboard tidak bergaris.
+      body: DesignFrame(
+        designSize: const Size(_designWidth, _designHeight),
+        background: ColoredBox(color: Colors.white, child: _buildGradient()),
+        child: _buildArtboard(),
       ),
     );
   }
