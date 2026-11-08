@@ -296,43 +296,31 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
                           ],
                         ),
                       ),
-
-                      const Spacer(),
-
-                      // Tombol Kompas North (N)
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.arrow_drop_up, size: 14, color: Colors.red),
-                            Text(
-                              'N',
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: _ink,
-                                height: 0.8,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
+              ),
+            ),
+
+            // 2b. Floating Controls Kanan Atas (Map Layer, Direction, Compass N) Sesuai Figma
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 16,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildCircleTool(
+                    icon: Icons.map_outlined,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCircleTool(
+                    icon: Icons.near_me_outlined,
+                    onTap: _openDirections,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildNorthDial(),
+                ],
               ),
             ),
 
@@ -458,7 +446,7 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
                                       padding:
                                           const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFE0F2FE),
+                                        color: const Color(0xFFD1FAE5),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -466,7 +454,7 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
                                         style: GoogleFonts.poppins(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF0284C7),
+                                          color: const Color(0xFF0F766E),
                                         ),
                                       ),
                                     ),
@@ -487,15 +475,23 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.close_rounded, color: _muted),
-                            onPressed: () {
-                              if (widget.onClose != null) {
-                                widget.onClose!();
-                              } else {
-                                Navigator.pop(context);
-                              }
-                            },
+                          Material(
+                            color: const Color(0xFFF1F5F9),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () {
+                                if (widget.onClose != null) {
+                                  widget.onClose!();
+                                } else {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Icon(Icons.close_rounded, color: _ink, size: 18),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -680,42 +676,98 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
                         children: [
                           Expanded(
                             child: SizedBox(
-                              height: 48,
-                              child: OutlinedButton.icon(
+                              height: 52,
+                              child: OutlinedButton(
                                 onPressed: _callMuthawwif,
-                                icon: const Icon(Icons.phone_outlined, size: 18, color: _ink),
-                                label: Text(
-                                  'Hubungi',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 13, fontWeight: FontWeight.w700, color: _ink),
-                                ),
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                  shape:
-                                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.phone_rounded,
+                                          color: Colors.white, size: 15),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        'Hubungi',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: _ink),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: SizedBox(
-                              height: 48,
-                              child: ElevatedButton.icon(
+                              height: 52,
+                              child: OutlinedButton(
                                 onPressed: _openDirections,
-                                icon: const Icon(Icons.navigation_rounded,
-                                    size: 18, color: Colors.white),
-                                label: Text(
-                                  'Petunjuk Arah',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
                                 ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _ink,
-                                  elevation: 0,
-                                  shape:
-                                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.near_me_rounded,
+                                          color: Colors.white, size: 15),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Petunjuk Arah',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: _ink),
+                                          ),
+                                          Text(
+                                            '$_walkMinutes mnt',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 9.5, color: _muted),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -752,6 +804,52 @@ class _MapsTrackMuthawwifViewState extends State<MapsTrackMuthawwifView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCircleTool({required IconData icon, required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, color: _ink, size: 20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNorthDial() {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.arrow_drop_up, size: 16, color: Colors.red),
+            Text(
+              'N',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: _ink,
+                height: 0.8,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

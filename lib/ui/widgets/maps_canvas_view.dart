@@ -12,6 +12,7 @@ class MapsCanvasView extends StatefulWidget {
   final bool isSosActive;
   final VoidCallback? onCheckIn;
   final VoidCallback? onRecenter;
+  final VoidCallback? onTapMuthawwif;
   final double userLat;
   final double userLng;
   final double muthawwifLat;
@@ -23,6 +24,7 @@ class MapsCanvasView extends StatefulWidget {
     this.isSosActive = false,
     this.onCheckIn,
     this.onRecenter,
+    this.onTapMuthawwif,
     this.userLat = 21.4189,
     this.userLng = 39.8246,
     this.muthawwifLat = 21.4208,
@@ -208,62 +210,66 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
                     point: _muthawwifCoord,
                     width: 120,
                     height: 95,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Tag Pill "Mutawaf"
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x1F000000), blurRadius: 4),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.shield, color: Colors.white, size: 10),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  'Mutawaf',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onTapMuthawwif,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Tag Pill "Mutawaf"
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x1F000000), blurRadius: 4),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.shield, color: Colors.white, size: 10),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    'Mutawaf',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        // Avatar Lingkaran Hijau
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF10B981), width: 3),
-                            color: Colors.white,
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x26000000),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
+                          const SizedBox(height: 3),
+                          // Avatar Lingkaran Hijau
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFF10B981), width: 3),
+                              color: Colors.white,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x26000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const CircleAvatar(
+                              backgroundColor: Color(0xFFE2E8F0),
+                              child: Icon(Icons.person, color: Color(0xFF10B981), size: 26),
+                            ),
                           ),
-                          child: const CircleAvatar(
-                            backgroundColor: Color(0xFFE2E8F0),
-                            child: Icon(Icons.person, color: Color(0xFF10B981), size: 26),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
 

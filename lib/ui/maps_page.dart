@@ -240,7 +240,20 @@ class _MapsPageState extends State<MapsPage> {
             Positioned.fill(
               child: MapsCanvasView(
                 isSosActive: _isSosActive,
-                showMuthawwif: false,
+                showMuthawwif: true,
+                onTapMuthawwif: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MapsTrackMuthawwifView(
+                        api: widget.api,
+                        groupId: _groupId,
+                        userLat: _currentLat,
+                        userLng: _currentLng,
+                      ),
+                    ),
+                  );
+                },
                 userLat: _currentLat,
                 userLng: _currentLng,
               ),
@@ -325,30 +338,54 @@ class _MapsPageState extends State<MapsPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: _red.withValues(alpha: 0.45),
-                              blurRadius: 20,
+                              color: _red.withValues(alpha: _isSosActive ? 0.35 : 0.45),
+                              blurRadius: _isSosActive ? 25 : 20,
+                              spreadRadius: _isSosActive ? 6 : 0,
                               offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         child: Center(
-                          child: Text(
-                            _isSosActive ? '✓\nTerkirim' : 'SOS',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: _isSosActive ? 12 : 18,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1.1,
-                            ),
-                          ),
+                          child: _isSosActive
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'SOS',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '✓ Terkirim',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'SOS',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
 
                     // Tombol Kanan: Lokasi Saya
                     _buildIslandCircleButton(
-                      icon: Icons.person_pin_circle_rounded,
+                      icon: Icons.person_outline,
                       tooltip: 'Lokasi Saya',
                       onTap: () {
                         MapsMyLocationSheet.show(
