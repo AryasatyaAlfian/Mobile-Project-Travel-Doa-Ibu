@@ -69,6 +69,21 @@ class TravelApi {
   Future<BlogPost> post(String slug) async =>
       BlogPost.fromJson((await client.get('/posts/$slug'))['data'] as Map<String, dynamic>);
 
+  Future<List<Map<String, dynamic>>> faqs() async {
+    try {
+      final res = await client.get('/faqs');
+      final data = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final result = <Map<String, dynamic>>[];
+      for (final cat in data) {
+        final items = (cat['faqs'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        result.addAll(items);
+      }
+      return result;
+    } catch (_) {
+      return [];
+    }
+  }
+
   // ---- Form (tersimpan ke tabel yang sama dengan form web) ----
 
   /// Mengembalikan pesan sukses dari server.

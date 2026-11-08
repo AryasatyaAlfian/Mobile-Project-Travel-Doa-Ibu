@@ -51,14 +51,15 @@ class TicketOrder {
   final String imageUrl;
   final DateTime createdAt;
 
-  bool get isPendingPayment => status == 'new';
-  bool get isConfirmed => status == 'booked' || status == 'confirmed';
+  bool get isPendingPayment => status == 'new' || status == 'pending';
+  bool get isConfirmed => status == 'booked' || status == 'confirmed' || status == 'paid';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
 
   String get statusLabel {
+    if (status == 'paid' || status == 'confirmed') return 'Sudah Dibayar';
+    if (status == 'booked') return 'Dikonfirmasi';
     if (isPendingPayment) return 'Menunggu Pembayaran';
-    if (isConfirmed) return 'Dikonfirmasi';
     if (isCompleted) return 'Selesai';
     if (isCancelled) return 'Dibatalkan';
     return status;

@@ -269,7 +269,7 @@ class _TicketPageState extends State<TicketPage> {
                     const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32), size: 48),
                     const SizedBox(height: 8),
                     Text(
-                      ticket.isPendingPayment ? 'Menunggu Pembayaran' : 'Transaksi Terverifikasi',
+                      ticket.isPendingPayment ? 'Menunggu Pembayaran' : 'Transaksi Terverifikasi • Sudah Dibayar',
                       style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                     const Divider(height: 24),
@@ -278,6 +278,32 @@ class _TicketPageState extends State<TicketPage> {
                     _buildProofRow('Nama', ticket.passengerName),
                     _buildProofRow('Status', ticket.statusLabel),
                     _buildProofRow('Metode', 'Transfer Bank / Midtrans'),
+                    if (ticket.isPendingPayment) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await TicketService.instance.updateTicketStatus(ticket.id, 'confirmed');
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (!mounted) return;
+                          setState(() => _loadTickets());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Pembayaran tiket #${ticket.id} berhasil! Status: Sudah Dibayar'),
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.payment_rounded, size: 16),
+                        label: const Text('Bayar Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFECC485),
+                          foregroundColor: const Color(0xFF1F1F1F),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1078,7 +1104,7 @@ class _TicketPageState extends State<TicketPage> {
             const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF155724)),
             const SizedBox(width: 4),
             Text(
-              'Dikonfirmasi',
+              'Sudah Dibayar',
               style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF155724)),
             ),
           ],
