@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
 import 'package:mobile_project_doa_ibu/main.dart';
-import 'package:mobile_project_doa_ibu/models/ticket_order.dart';
 import 'package:mobile_project_doa_ibu/services/ticket_service.dart';
 import 'package:mobile_project_doa_ibu/services/travel_api.dart';
 import 'package:mobile_project_doa_ibu/ui/ticket_page.dart';
