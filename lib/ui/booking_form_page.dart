@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
+import '../core/smooth_page_route.dart';
+import '../main.dart';
 import '../models/models.dart';
+import '../models/ticket_order.dart';
 import '../services/ticket_service.dart';
 import '../services/travel_api.dart';
 
@@ -302,16 +305,24 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
       final message = await widget.api.submitBooking(request);
 
-      // Tambahkan tiket ke TicketService persisten
-      await TicketService.instance.addBookingTicket(
+      // Tambahkan tiket ke TicketService persisten dengan rincian penerbangan riil
+      final date = _selectedGroup?.departureDate ?? _preferredDate;
+      final departureDateStr = date != null
+          ? '${date.day} ${_monthName(date.month)} ${date.year}'
+          : 'Jadwal Segera Dikonfirmasi';
+
+      final newTicket = await TicketService.instance.addBookingTicket(
         packageName: widget.package.name,
         customerName: _nameController.text.trim(),
         imageUrl: widget.package.image,
+        airline: widget.package.airline,
+        departureSchedule: departureDateStr,
+        status: 'confirmed',
       );
 
       if (!mounted) return;
       _countdownTimer?.cancel();
-      _showSuccessDialog(message);
+      _showSuccessDialog(message, newTicket);
     } on ApiException catch (e) {
       if (!mounted) return;
       var err = e.message;
@@ -335,7 +346,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
     }
   }
 
-  void _showSuccessDialog(String message) {
+  void _showSuccessDialog(String message, TicketOrder newTicket) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -372,8 +383,16 @@ class _BookingFormPageState extends State<BookingFormPage> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context); // Pop dialog
-                  Navigator.pop(context); // Pop booking form to detail
+                  Navigator.of(context).pushAndRemoveUntil(
+                    SmoothPageRoute(
+                      page: MainScreen(
+                        api: widget.api,
+                        initialIndex: 1, // Tab Tiket
+                        initialTicketId: newTicket.id,
+                      ),
+                    ),
+                    (route) => false,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFECC485),
@@ -381,7 +400,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Kembali ke Paket', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('Lihat Tiket Saya', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -1494,38 +1513,6 @@ class _BookingFormPageState extends State<BookingFormPage> {
         ),
       ],
     );
-  }
-
-  String _formatPriceCompact(double amount) {
-    if (amount >= 1000000) {
-      final jt = amount / 1000000;
-      if (jt == jt.roundToDouble()) {
-        return '${jt.toInt()} jt';
-      } else {
-        return '${jt.toStringAsFixed(1).replaceAll('.', ',')} jt';
-      }
-    }
-    return _formatRupiah(amount);
-  }
-
-  String _formatRupiah(double amount) {
-    final intVal = amount.toInt();
-    final str = intVal.toString();
-    final buffer = StringBuffer();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      buffer.write(str[i]);
-      count++;
-      if (count % 3 == 0 && i > 0) {
-        buffer.write('.');
-      }
-    }
-    return buffer.toString().split('').reversed.join('');
-  }
-
-  String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    return (month >= 1 && month <= 12) ? months[month - 1] : '';
   }
 
   String _formatPriceCompact(double amount) {

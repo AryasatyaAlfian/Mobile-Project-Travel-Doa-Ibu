@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
 import 'package:mobile_project_doa_ibu/models/models.dart';
+import 'package:mobile_project_doa_ibu/services/ticket_service.dart';
 import 'package:mobile_project_doa_ibu/services/travel_api.dart';
 import 'package:mobile_project_doa_ibu/ui/booking_form_page.dart';
 import 'package:mobile_project_doa_ibu/ui/package_detail_page.dart';
@@ -370,8 +371,23 @@ void main() {
       expect(mockClient.lastPostPayload?['customer_whatsapp'], '081234567890');
       expect(mockClient.lastPostPayload?['terms_accepted'], true);
 
-      // Verifikasi dialog sukses muncul
+      // Verifikasi dialog sukses muncul dan ada tombol Lihat Tiket Saya
       expect(find.text('Pemesanan Berhasil!'), findsOneWidget);
+      expect(find.text('Lihat Tiket Saya'), findsOneWidget);
+
+      // Verifikasi tiket tersimpan di TicketService
+      final tickets = TicketService.instance.getActiveTickets();
+      expect(tickets.isNotEmpty, true);
+      expect(tickets.first.packageName, testPackage.name);
+      expect(tickets.first.passengerName, 'Zara Anselma');
+
+      // Tekan tombol Lihat Tiket Saya dan verifikasi redirection ke MainScreen (Tab Tiket)
+      await tester.tap(find.text('Lihat Tiket Saya'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Memastikan sudah berpindah ke Halaman Tiket
+      expect(find.byKey(const ValueKey('ticket_page')), findsOneWidget);
     });
   });
 }

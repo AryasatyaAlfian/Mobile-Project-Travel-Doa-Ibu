@@ -153,17 +153,31 @@ class _RootNavigationState extends State<RootNavigation> {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, required this.api, this.onBackToWelcome});
+  const MainScreen({
+    super.key,
+    required this.api,
+    this.onBackToWelcome,
+    this.initialIndex = 0,
+    this.initialTicketId,
+  });
 
   final TravelApi api;
   final VoidCallback? onBackToWelcome;
+  final int initialIndex;
+  final String? initialTicketId;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +193,10 @@ class _MainScreenState extends State<MainScreen> {
         },
       );
     } else if (_currentIndex == 1) {
-      currentBody = const TicketPage(key: ValueKey('ticket_page'));
+      currentBody = TicketPage(
+        key: const ValueKey('ticket_page'),
+        initialTicketId: widget.initialTicketId,
+      );
     } else if (_currentIndex == 2) {
       currentBody = MapsPage(
         api: widget.api,

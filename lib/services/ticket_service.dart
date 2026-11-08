@@ -137,6 +137,14 @@ class TicketService {
               }
               return t;
             })
+            .map((t) {
+              // Jika pesanan tiket dibuat oleh user (bukan seed default 981747) dan masih berstatus 'new',
+              // perbarui ke 'confirmed' agar tiket yang dipesan via checkout tampil sebagai sudah dibayar.
+              if (t.id != '981747' && t.status == 'new') {
+                return t.copyWith(status: 'confirmed');
+              }
+              return t;
+            })
             .toList();
         _cachedTickets = list;
         return List.unmodifiable(_cachedTickets!);
@@ -179,31 +187,65 @@ class TicketService {
     }
   }
 
+  /// Update status tiket (misal: 'confirmed' / 'paid', 'completed', 'cancelled')
+  Future<void> updateTicketStatus(String id, String newStatus) async {
+    final current = List<TicketOrder>.from(getTickets());
+    final index = current.indexWhere((t) => t.id == id);
+    if (index != -1) {
+      current[index] = current[index].copyWith(status: newStatus);
+      _cachedTickets = current;
+      _saveToStorage(current);
+    }
+  }
+
   /// Tambah pesanan baru dari form booking jemaah
   Future<TicketOrder> addBookingTicket({
     required String packageName,
     required String customerName,
     required String? imageUrl,
+    String status = 'new',
+    String? airline,
+    String? flightNumber,
+    String? departureSchedule,
+    String? route,
+    String? flightRoute,
+    String? departureAirport,
+    String? arrivalAirport,
+    String? passengerType,
   }) async {
     final newId = '${DateTime.now().millisecondsSinceEpoch % 1000000}';
+    final resolvedRoute = route ??
+        (packageName.contains('Umrah')
+            ? 'Jakarta - Jeddah'
+            : (packageName.contains('Japan') || packageName.contains('Jepang')
+                ? 'Jakarta - Tokyo'
+                : 'Jakarta - Destinasi Impian'));
+
+    final resolvedFlightRoute = flightRoute ??
+        (resolvedRoute.contains('Jeddah')
+            ? 'Jakarta (CGK) → Jeddah (JED)'
+            : (resolvedRoute.contains('Tokyo')
+                ? 'Jakarta (CGK) → Tokyo (TYOA)'
+                : 'Jakarta (CGK) → Destinasi'));
+
     final newTicket = TicketOrder(
       id: newId,
-      route: packageName.contains('Umrah')
-          ? 'Jakarta - Jeddah'
-          : (packageName.contains('Japan') || packageName.contains('Jepang')
-              ? 'Jakarta - Tokyo'
-              : 'Jakarta - Destinasi Impian'),
+      route: resolvedRoute,
       packageName: packageName,
-      status: 'new', // Status 'new' di backend berarti menunggu konfirmasi/pembayaran
-      airline: 'Emirates',
-      flightNumber: 'EM ${100 + (DateTime.now().millisecond % 899)}',
-      departureSchedule: 'Jadwal Segera Dikonfirmasi',
-      flightRoute: 'Jakarta (CGK) → Destinasi',
-      departureAirport: 'Soekarno Hatta Internasional Airport',
-      arrivalAirport: 'Bandara Internasional Tujuan',
+      status: status,
+      airline: airline ?? 'Saudia Airlines',
+      flightNumber: flightNumber ?? 'SV ${100 + (DateTime.now().millisecond % 899)}',
+      departureSchedule: departureSchedule ?? 'Jadwal Segera Dikonfirmasi',
+      flightRoute: resolvedFlightRoute,
+      departureAirport: departureAirport ?? 'Soekarno Hatta Internasional Airport',
+      arrivalAirport: arrivalAirport ??
+          (resolvedRoute.contains('Jeddah')
+              ? 'King Abdul Aziz Internasional Airport'
+              : 'Bandara Internasional Tujuan'),
       arrivalSchedule: 'Mengikuti Itinerary',
-      flightDuration: 'Penerbangan Pilihan',
+      flightDuration: resolvedRoute.contains('Jeddah') ? '9j 45m Langsung' : 'Penerbangan Pilihan',
       passengerName: customerName.isNotEmpty ? customerName : 'Zara Anselma',
+      passengerType: passengerType ?? 'Dewasa',
       imageUrl: imageUrl != null && imageUrl.isNotEmpty
           ? imageUrl
           : (packageName.toLowerCase().contains('japan') || packageName.toLowerCase().contains('jepang')
