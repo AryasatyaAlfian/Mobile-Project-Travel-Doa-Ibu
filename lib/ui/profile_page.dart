@@ -19,11 +19,15 @@ class ProfilePage extends StatefulWidget {
     required this.api,
     required this.onLogout,
     this.onNavigateToMuthawwif,
+    this.isAdmin = false,
+    this.isMuthawwif = false,
   });
 
   final TravelApi api;
   final VoidCallback onLogout;
   final VoidCallback? onNavigateToMuthawwif;
+  final bool isAdmin;
+  final bool isMuthawwif;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -89,9 +93,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = TravelApi.currentUser;
-    final userName = (user?.name != null && user!.name.isNotEmpty) ? user.name : 'Jemaah';
-    final userEmail = (user?.email != null && user!.email.isNotEmpty) ? user.email : 'jemaah@traveldoaibu.com';
+    final isRoleAdmin = widget.isAdmin || (TravelApi.currentUser?.isAdmin ?? false);
+    final isRoleMuthawwif = widget.isMuthawwif || (TravelApi.currentUser?.isMuthawwif ?? false);
+    final isStaff = isRoleAdmin || isRoleMuthawwif;
+    final user = TravelApi.currentUser ?? widget.api.user;
+    final userName = (user?.name != null && user!.name.isNotEmpty)
+        ? user.name
+        : (isRoleAdmin ? 'Raina' : (isRoleMuthawwif ? 'Ust. Felix Siauw' : 'Jemaah'));
+    final userEmail = (user?.email != null && user!.email.isNotEmpty)
+        ? user.email
+        : (isRoleAdmin ? 'raina@gmail.com' : (isRoleMuthawwif ? 'felix@traveldoaibu.test' : 'jemaah@traveldoaibu.com'));
     final topPadding = MediaQuery.of(context).padding.top;
     final headerHeight = topPadding + 115.0;
 
@@ -263,7 +274,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                   Navigator.push(
                                     context,
                                     SmoothPageRoute(
-                                      page: ProfileAccountInfoPage(api: widget.api),
+                                      page: ProfileAccountInfoPage(
+                                        api: widget.api,
+                                        isAdmin: isRoleAdmin,
+                                      ),
                                     ),
                                   ).then((_) => _handleRefresh(silent: true));
                                 },
@@ -316,7 +330,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           Navigator.push(
                             context,
                             SmoothPageRoute(
-                              page: ProfileAccountInfoPage(api: widget.api),
+                              page: ProfileAccountInfoPage(
+                                api: widget.api,
+                                isAdmin: isStaff,
+                              ),
                             ),
                           ).then((_) => _handleRefresh(silent: true));
                         },
@@ -331,7 +348,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           Navigator.push(
                             context,
                             SmoothPageRoute(
-                              page: ProfileSettingsPage(api: widget.api),
+                              page: ProfileSettingsPage(
+                                api: widget.api,
+                                isAdmin: isStaff,
+                              ),
                             ),
                           );
                         },
@@ -346,26 +366,30 @@ class _ProfilePageState extends State<ProfilePage> {
                           Navigator.push(
                             context,
                             SmoothPageRoute(
-                              page: ProfileSecurityPage(api: widget.api),
+                              page: ProfileSecurityPage(
+                                api: widget.api,
+                                isAdmin: isStaff,
+                              ),
                             ),
                           );
                         },
                       ),
 
-                      // Menu 4: Digital Payment (Smooth Transition ke Halaman Penuh Figma)
-                      _buildMenuCard(
-                        icon: Icons.credit_card_rounded,
-                        title: 'Digital Payment',
-                        subtitle: 'Kelola kartu dan metode pembayaran',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            SmoothPageRoute(
-                              page: const ProfileDigitalPaymentPage(),
-                            ),
-                          );
-                        },
-                      ),
+                      // Menu 4: Digital Payment (Khusus Jemaah)
+                      if (!isStaff)
+                        _buildMenuCard(
+                          icon: Icons.credit_card_rounded,
+                          title: 'Digital Payment',
+                          subtitle: 'Kelola kartu dan metode pembayaran',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              SmoothPageRoute(
+                                page: const ProfileDigitalPaymentPage(),
+                              ),
+                            );
+                          },
+                        ),
 
                       // Menu 5: Keluar
                       _buildMenuCard(

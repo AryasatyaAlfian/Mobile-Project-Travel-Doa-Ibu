@@ -10,10 +10,12 @@ class AdminLandingPage extends StatelessWidget {
     super.key,
     required this.api,
     this.onLogout,
+    this.onOpenMaps,
   });
 
   final TravelApi api;
   final VoidCallback? onLogout;
+  final VoidCallback? onOpenMaps;
 
   static const Color _gold = Color(0xFFECC485);
   static const Color _ink = Color(0xFF1F1F1F);
@@ -134,7 +136,7 @@ class AdminLandingPage extends StatelessWidget {
                 // 2. Konten Menu Admin
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 96),
                     children: [
                       // Kartu Sambutan Profil Admin
                       Container(
@@ -202,7 +204,15 @@ class AdminLandingPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
 
-                      // 4 Kartu Modul Admin
+                      // Modul Peta & Tracking (Utama)
+                      _buildAdminMenuCard(
+                        context,
+                        title: 'Peta & Tracking Jemaah',
+                        subtitle: 'Pantau cluster rombongan, radius aman jemaah, dan alert SOS darurat',
+                        icon: Icons.map_rounded,
+                        color: _adminRed,
+                        onTap: onOpenMaps,
+                      ),
                       _buildAdminMenuCard(
                         context,
                         title: 'Data Jemaah',
@@ -266,6 +276,7 @@ class AdminLandingPage extends StatelessWidget {
     required String subtitle,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -285,18 +296,19 @@ class AdminLandingPage extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Modul "$title" siap dikembangkan pada tahapan fitur Admin berikutnya.',
-                  style: GoogleFonts.poppins(fontSize: 12),
-                ),
-                backgroundColor: color,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
+          onTap: onTap ??
+              () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Modul "$title" siap dikembangkan pada tahapan fitur Admin berikutnya.',
+                      style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                    backgroundColor: color,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),

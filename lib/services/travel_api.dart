@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../core/api_client.dart';
 import '../core/storage/app_storage.dart';
 import '../models/models.dart';
@@ -12,13 +14,18 @@ class TravelApi {
 
   /// Profil pengguna yang sedang login saat ini (disimpan persisten ke storage & memori)
   static AppUser? _currentUser;
+  static final ValueNotifier<AppUser?> userNotifier = ValueNotifier<AppUser?>(null);
 
   static AppUser? get currentUser {
     if (_currentUser == null) {
+      final token = ApiClient().token;
+      if (token == null || token.isEmpty) return null;
+
       final cached = AppStorage.instance.get('user_profile');
       if (cached != null && cached.isNotEmpty) {
         try {
           _currentUser = AppUser.fromJson(jsonDecode(cached) as Map<String, dynamic>);
+          userNotifier.value = _currentUser;
         } catch (_) {}
       }
     }
@@ -32,6 +39,7 @@ class TravelApi {
     } else {
       AppStorage.instance.remove('user_profile');
     }
+    userNotifier.value = val;
   }
 
   AppUser? get user => currentUser;
@@ -166,11 +174,14 @@ class TravelApi {
   }
 
   Future<void> logout() async {
-    try {
-      await client.post('/auth/logout');
-    } catch (_) {}
+    final prevToken = client.token;
     client.token = null;
     currentUser = null;
+    if (prevToken != null && prevToken.isNotEmpty) {
+      try {
+        await client.post('/auth/logout');
+      } catch (_) {}
+    }
   }
 
   // ---- Lupa Password (Terintegrasi REST API /auth/password/*) ----
@@ -453,6 +464,115 @@ class TravelApi {
       if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
         rethrow;
       }
+      return {};
+    }
+  }
+
+  /// Backend: GET /api/v1/admin/departure-groups
+  Future<List<Map<String, dynamic>>> getAdminDepartureGroups({String? month, int? packageId}) async {
+    final query = <String, String>{};
+    if (month != null) query['month'] = month;
+    if (packageId != null) query['package_id'] = packageId.toString();
+
+    final queryString = Uri(queryParameters: query).query;
+    final path = query.isEmpty
+        ? '/admin/departure-groups'
+        : '/admin/departure-groups?$queryString';
+    try {
+      final json = await client.get(path);
+      final list = (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: GET /api/v1/sos
+  Future<List<Map<String, dynamic>>> getSosReports({String? status}) async {
+    final path = status != null ? '/sos?status=$status' : '/sos';
+    try {
+      final json = await client.get(path);
+      final list = (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: GET /api/v1/departure-groups/{id}/tracker
+  Future<Map<String, dynamic>> getDepartureGroupTracker(int departureGroupId) async {
+    try {
+      final json = await client.get('/departure-groups/$departureGroupId/tracker');
+      return (json['data'] as Map<String, dynamic>?) ?? {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: PATCH /api/v1/sos/{id}/handling
+  Future<Map<String, dynamic>> handleSosReport(
+    int sosReportId, {
+    required String action,
+    required String expectedStatus,
+    String? note,
+  }) async {
+    try {
+      final json = await client.patch('/sos/$sosReportId/handling', {
+        'action': action,
+        'expected_status': expectedStatus,
+        if (note != null && note.isNotEmpty) 'note': note,
+      });
+      return (json['data'] as Map<String, dynamic>?) ?? {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Backend: GET /api/v1/muthawwif
+  Future<List<Map<String, dynamic>>> getMuthawwifList() async {
+    try {
+      final json = await client.get('/muthawwif');
+      final list = (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: GET /api/v1/departures (Role: admin & muthawwif)
+  Future<List<Map<String, dynamic>>> getDepartures({String? month}) async {
+    final path = month != null ? '/departures?month=$month' : '/departures';
+    try {
+      final json = await client.get(path);
+      final list = (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: GET /api/v1/jemaah (Role: admin & muthawwif)
+  Future<List<Map<String, dynamic>>> getMuthawwifJemaah({String? query, int? departureGroupId}) async {
+    final queryParams = <String, String>{};
+    if (query != null && query.isNotEmpty) queryParams['q'] = query;
+    if (departureGroupId != null) queryParams['departure_group_id'] = departureGroupId.toString();
+    final queryString = Uri(queryParameters: queryParams).query;
+    final path = queryString.isEmpty ? '/jemaah' : '/jemaah?$queryString';
+    try {
+      final json = await client.get(path);
+      final list = (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: GET /api/v1/jemaah/{id} (Role: admin & muthawwif)
+  Future<Map<String, dynamic>> getJemaahDetail(int userId) async {
+    try {
+      final json = await client.get('/jemaah/$userId');
+      return (json['data'] as Map<String, dynamic>?) ?? {};
+    } catch (_) {
       return {};
     }
   }

@@ -7,12 +7,11 @@ import 'core/app_colors.dart';
 import 'core/app_theme.dart';
 import 'models/models.dart';
 import 'services/travel_api.dart';
-import 'ui/admin_landing_page.dart';
+import 'ui/admin_shell_page.dart';
 import 'ui/homepage_jemaah.dart';
 import 'ui/initial_landing_page.dart';
-import 'ui/landing_page.dart';
 import 'ui/maps_page.dart';
-import 'ui/muthawwif_landing_page.dart';
+import 'ui/muthawwif_shell_page.dart';
 import 'ui/package_detail_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/ticket_page.dart';
@@ -65,85 +64,74 @@ class RootNavigation extends StatefulWidget {
 
 class _RootNavigationState extends State<RootNavigation> {
   late bool _hasEnteredApp;
-  bool _hasStarted = false;
+  bool _isRestoringSession = false;
 
   @override
   void initState() {
     super.initState();
-    // Otomatis deteksi sesi dari local storage (Auto-Login / Session Restore)
-    _hasEnteredApp = widget.api.client.token != null && widget.api.client.token!.isNotEmpty;
-    if (_hasEnteredApp) {
-      widget.api.me().catchError((_) => null);
+    TravelApi.userNotifier.addListener(_onUserChanged);
+
+    final hasToken = widget.api.client.token != null && widget.api.client.token!.isNotEmpty;
+    _hasEnteredApp = hasToken || widget.api.user != null;
+
+    if (hasToken) {
+      if (widget.api.user == null) {
+        _isRestoringSession = true;
+        widget.api.me().then((user) {
+          if (mounted) {
+            setState(() {
+              _isRestoringSession = false;
+              if (user == null && (widget.api.client.token == null || widget.api.client.token!.isEmpty)) {
+                _hasEnteredApp = false;
+              }
+            });
+          }
+        }).catchError((_) {
+          if (mounted) {
+            setState(() {
+              _isRestoringSession = false;
+            });
+          }
+        });
+      } else {
+        widget.api.me().catchError((_) => null);
+      }
+    }
+  }
+
+  void _onUserChanged() {
+    if (mounted) {
+      setState(() {
+        _hasEnteredApp = TravelApi.currentUser != null;
+      });
     }
   }
 
   @override
+  void dispose() {
+    TravelApi.userNotifier.removeListener(_onUserChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isRestoringSession) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFFF8EC),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFECC485)),
+          ),
+        ),
+      );
+    }
+
     if (!_hasEnteredApp) {
-      // Transisi Halus (Shared-Axis Slide & Fade Transition) dari Layar 1 ke Layar 2
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 650),
-        reverseDuration: const Duration(milliseconds: 550),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        layoutBuilder: (currentChild, previousChildren) {
-          return Stack(
-            fit: StackFit.expand,
-            alignment: Alignment.center,
-            children: <Widget>[
-              ...previousChildren,
-              ?currentChild,
-            ],
-          );
-        },
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          final isLanding = child.key == const ValueKey('landing_page');
-
-          // Meluncur halus secara horizontal (kanan ke kiri saat maju, kiri ke kanan saat mundur)
-          final offsetAnimation = Tween<Offset>(
-            begin: isLanding ? const Offset(0.12, 0.0) : const Offset(-0.12, 0.0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          ));
-
-          // Skala dinamis yang halus (0.95 -> 1.0)
-          final scaleAnimation = Tween<double>(
-            begin: isLanding ? 0.95 : 1.03,
-            end: 1.0,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          ));
-
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: offsetAnimation,
-              child: ScaleTransition(
-                scale: scaleAnimation,
-                child: child,
-              ),
-            ),
-          );
-        },
-        child: !_hasStarted
-            ? InitialLandingPage(
-                key: const ValueKey('initial_landing_page'),
-                api: widget.api,
-                onStart: () => setState(() => _hasStarted = true),
-                onAuthenticated: () => setState(() {
-                  _hasStarted = true;
-                  _hasEnteredApp = true;
-                }),
-              )
-            : LandingPage(
-                key: const ValueKey('landing_page'),
-                api: widget.api,
-                onContinueAsGuest: () => setState(() => _hasEnteredApp = true),
-                onBackToInitial: () => setState(() => _hasStarted = false),
-              ),
+      return InitialLandingPage(
+        key: const ValueKey('initial_landing_page'),
+        api: widget.api,
+        onStart: () => setState(() => _hasEnteredApp = true),
+        onAuthenticated: () => setState(() => _hasEnteredApp = true),
       );
     }
 
@@ -151,27 +139,29 @@ class _RootNavigationState extends State<RootNavigation> {
 
     // RBAC Routing: Arahkan ke landing page sesuai role pengguna
     if (user != null && user.isAdminRole) {
-      return AdminLandingPage(
+      return AdminShellPage(
         api: widget.api,
-        onLogout: () {
-          widget.api.logout();
-          setState(() {
-            _hasEnteredApp = false;
-            _hasStarted = true;
-          });
+        onLogout: () async {
+          await widget.api.logout();
+          if (mounted) {
+            setState(() {
+              _hasEnteredApp = false;
+            });
+          }
         },
       );
     }
 
     if (user != null && user.isMuthawwif) {
-      return MuthawwifLandingPage(
+      return MuthawwifShellPage(
         api: widget.api,
-        onLogout: () {
-          widget.api.logout();
-          setState(() {
-            _hasEnteredApp = false;
-            _hasStarted = true;
-          });
+        onLogout: () async {
+          await widget.api.logout();
+          if (mounted) {
+            setState(() {
+              _hasEnteredApp = false;
+            });
+          }
         },
       );
     }
@@ -181,7 +171,6 @@ class _RootNavigationState extends State<RootNavigation> {
       api: widget.api,
       onBackToWelcome: () => setState(() {
         _hasEnteredApp = false;
-        _hasStarted = true;
       }),
     );
   }

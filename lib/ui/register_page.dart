@@ -208,7 +208,10 @@ class _RegisterPageState extends State<RegisterPage> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => LoginPage(api: widget.api),
+                          builder: (context) => LoginPage(
+                            api: widget.api,
+                            onLoginSuccess: widget.onGoogleSignInSuccess,
+                          ),
                         ),
                       );
                     }
@@ -278,7 +281,12 @@ class _RegisterPageState extends State<RegisterPage> {
       navigator.pop();
     } else {
       navigator.pushReplacement(
-        MaterialPageRoute(builder: (_) => LoginPage(api: widget.api)),
+        MaterialPageRoute(
+          builder: (_) => LoginPage(
+            api: widget.api,
+            onLoginSuccess: widget.onGoogleSignInSuccess,
+          ),
+        ),
       );
     }
   }

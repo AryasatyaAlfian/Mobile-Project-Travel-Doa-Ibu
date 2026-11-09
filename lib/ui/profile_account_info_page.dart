@@ -16,6 +16,7 @@ class ProfileAccountInfoPage extends StatefulWidget {
     this.phone,
     this.birthDate,
     this.gender,
+    this.isAdmin = false,
   });
 
   final TravelApi? api;
@@ -24,6 +25,7 @@ class ProfileAccountInfoPage extends StatefulWidget {
   final String? phone;
   final String? birthDate;
   final String? gender;
+  final bool isAdmin;
 
   @override
   State<ProfileAccountInfoPage> createState() => _ProfileAccountInfoPageState();
@@ -45,12 +47,13 @@ class _ProfileAccountInfoPageState extends State<ProfileAccountInfoPage> {
   @override
   void initState() {
     super.initState();
-    final user = TravelApi.currentUser;
-    _name = widget.name ?? user?.name ?? 'Jemaah';
-    _email = widget.email ?? user?.email ?? 'Belum ada email';
-    _phone = widget.phone ?? user?.phone ?? 'Belum diatur';
-    _birthDate = widget.birthDate ?? 'Belum diatur';
-    _gender = widget.gender ?? 'Belum diatur';
+    final user = TravelApi.currentUser ?? widget.api?.user;
+    final isRoleAdmin = widget.isAdmin || (user?.isAdmin ?? false);
+    _name = widget.name ?? user?.name ?? (isRoleAdmin ? 'Raina' : 'Jemaah');
+    _email = widget.email ?? user?.email ?? (isRoleAdmin ? 'raina@gmail.com' : 'Belum ada email');
+    _phone = widget.phone ?? user?.phone ?? (isRoleAdmin ? '0855 3668 1691' : 'Belum diatur');
+    _birthDate = widget.birthDate ?? (isRoleAdmin ? '1 Jan 1998' : 'Belum diatur');
+    _gender = widget.gender ?? (isRoleAdmin ? 'Perempuan' : 'Belum diatur');
 
     if (widget.api != null) {
       _loadProfileFromBackend();
@@ -105,6 +108,11 @@ class _ProfileAccountInfoPageState extends State<ProfileAccountInfoPage> {
 
   Future<void> _saveFieldToBackend(Map<String, dynamic> data, String fieldName) async {
     if (widget.api == null) return;
+    final isRoleAdmin = widget.isAdmin || (widget.api?.user?.isAdmin ?? false);
+    if (isRoleAdmin && (fieldName == 'Tanggal Lahir' || fieldName == 'Jenis Kelamin')) {
+      // shortcut: backend admin belum menyediakan kolom birth_date & gender pada /me/profile, upgrade ketika backend menambahkan relasi profil admin
+      return;
+    }
     try {
       await widget.api!.updateProfile(data);
     } catch (e) {

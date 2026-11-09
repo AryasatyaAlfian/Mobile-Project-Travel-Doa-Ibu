@@ -5,12 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
+import 'package:mobile_project_doa_ibu/core/storage/app_storage.dart';
 import 'package:mobile_project_doa_ibu/main.dart';
 import 'package:mobile_project_doa_ibu/models/models.dart';
 import 'package:mobile_project_doa_ibu/services/travel_api.dart';
-import 'package:mobile_project_doa_ibu/ui/admin_landing_page.dart';
+import 'package:mobile_project_doa_ibu/ui/admin_shell_page.dart';
 import 'package:mobile_project_doa_ibu/ui/login_page.dart';
-import 'package:mobile_project_doa_ibu/ui/muthawwif_landing_page.dart';
+import 'package:mobile_project_doa_ibu/ui/muthawwif_shell_page.dart';
+import 'package:mobile_project_doa_ibu/ui/profile_logout_page.dart';
 
 void main() {
   group('AppUser RBAC Model Tests', () {
@@ -65,9 +67,10 @@ void main() {
   group('RBAC Navigation & Landing Page Tests', () {
     tearDown(() {
       TravelApi.currentUser = null;
+      AppStorage.instance.clear();
     });
 
-    testWidgets('RootNavigation mengarahkan Admin ke AdminLandingPage', (tester) async {
+    testWidgets('RootNavigation mengarahkan Admin ke AdminShellPage & AdminProfilePage', (tester) async {
       tester.view.physicalSize = const Size(414, 896);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -95,12 +98,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(AdminLandingPage), findsOneWidget);
-      expect(find.text('Panel Administrator'), findsOneWidget);
-      expect(find.text('ROLE: ADMIN'), findsOneWidget);
-      expect(find.text('Modul Manajemen Admin'), findsOneWidget);
-      expect(find.text('Data Jemaah'), findsOneWidget);
-      expect(find.text('Data Muthawwif'), findsOneWidget);
+      expect(find.byType(AdminShellPage), findsOneWidget);
+
+      // Pindah ke tab profil admin untuk melihat panel profil administrator
+      await tester.tap(find.byTooltip('Profil Administrator'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Raina Admin'), findsOneWidget);
+      expect(find.text('Akun'), findsOneWidget);
+      expect(find.text('Informasi Akun'), findsOneWidget);
+      expect(find.text('Pengaturan'), findsOneWidget);
+      expect(find.text('Keamanan Akun'), findsOneWidget);
+      expect(find.text('Keluar'), findsOneWidget);
+      expect(find.text('Digital Payment'), findsNothing);
     });
 
     testWidgets('RootNavigation mengarahkan Muthawwif ke MuthawwifLandingPage', (tester) async {
@@ -131,11 +142,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(MuthawwifLandingPage), findsOneWidget);
-      expect(find.text('Portal Pembimbing'), findsOneWidget);
-      expect(find.text('ROLE: MUTHAWWIF'), findsOneWidget);
-      expect(find.text('Jemaah Bimbingan'), findsOneWidget);
-      expect(find.text('Radar & Pemantauan Lokasi'), findsOneWidget);
+      expect(find.byType(MuthawwifShellPage), findsOneWidget);
+      expect(find.text('Layanan Mutawwif'), findsOneWidget);
+      expect(find.text('Detail Rombongan'), findsOneWidget);
+      expect(find.text('Jadwal Kegiatan'), findsOneWidget);
     });
 
     testWidgets('RootNavigation mengarahkan Jemaah ke MainScreen (Landing Page User)', (tester) async {
@@ -179,7 +189,7 @@ void main() {
       expect(find.text('Tiket Saya'), findsNothing); // Home tab aktif
     });
 
-    testWidgets('Logout dari AdminLandingPage mengembalikan ke halaman sambutan', (tester) async {
+    testWidgets('Logout dari AdminProfilePage mengembalikan ke halaman sambutan', (tester) async {
       tester.view.physicalSize = const Size(414, 896);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -207,16 +217,27 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(AdminLandingPage), findsOneWidget);
+      expect(find.byType(AdminShellPage), findsOneWidget);
 
-      // Tekan tombol logout
-      await tester.tap(find.text('Keluar dari Akun Admin'));
+      // Pindah ke tab profil admin untuk logout
+      await tester.tap(find.byTooltip('Profil Administrator'));
+      await tester.pumpAndSettle();
+
+      // Scroll ke menu Keluar dan tekan
+      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keluar'));
+      await tester.pumpAndSettle();
+
+      // Di halaman ProfileLogoutPage, konfirmasi keluar
+      expect(find.byType(ProfileLogoutPage), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Keluar'));
       await tester.pumpAndSettle();
 
       // Sesi terhapus dan kembali ke alur landing
       expect(api.user, isNull);
       expect(api.client.token, isNull);
-      expect(find.byType(AdminLandingPage), findsNothing);
+      expect(find.byType(AdminShellPage), findsNothing);
     });
 
     testWidgets('Login berhasil mengarahkan ke landing page sesuai role dari response backend API', (tester) async {
@@ -276,6 +297,107 @@ void main() {
       expect(api.user!.isAdminRole, isTrue);
       expect(api.user!.email, 'admin@travel.com');
       expect(api.client.token, 'sanctum_token_123');
+    });
+
+    testWidgets('Alur lengkap login admin dari RootNavigation mengarahkan ke AdminShellPage', (tester) async {
+      tester.view.physicalSize = const Size(414, 896);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final client = ApiClient(
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/login')) {
+            return http.Response(
+              jsonEncode({
+                'token': 'admin_sanctum_token',
+                'user': {
+                  'id': 2,
+                  'name': 'Raina',
+                  'email': 'raina@traveldoaibu.test',
+                  'is_admin': true,
+                  'role': 'admin',
+                  'role_label': 'Admin',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('{}', 200);
+        }),
+        baseUrl: 'http://test',
+      );
+      final api = TravelApi(client);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RootNavigation(api: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Mulai dari InitialLandingPage, tekan LOGIN
+      expect(find.text('LOGIN'), findsOneWidget);
+      await tester.tap(find.text('LOGIN'));
+      await tester.pumpAndSettle();
+
+      // Sekarang di LoginPage
+      expect(find.byType(LoginPage), findsOneWidget);
+
+      // Masukkan kredensial admin
+      await tester.enterText(find.byType(TextField).first, 'raina@traveldoaibu.test');
+      await tester.enterText(find.byType(TextField).last, 'DoaIbu123!');
+      await tester.tap(find.text('MASUK'));
+      await tester.pumpAndSettle();
+
+      // Harus mengarahkan ke AdminShellPage, BUKAN MainScreen
+      expect(find.byType(AdminShellPage), findsOneWidget);
+      expect(find.byType(MainScreen), findsNothing);
+    });
+
+    testWidgets('Session restore: token ada tetapi currentUser belum dimuat harus memuat me() dan menampilkan AdminShellPage', (tester) async {
+      tester.view.physicalSize = const Size(414, 896);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final client = ApiClient(
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/me')) {
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'id': 2,
+                  'name': 'Raina Admin',
+                  'email': 'raina@traveldoaibu.test',
+                  'is_admin': true,
+                  'role': 'admin',
+                  'role_label': 'Admin',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('{}', 200);
+        }),
+        baseUrl: 'http://test',
+      );
+      client.token = 'existing_valid_token';
+      final api = TravelApi(client);
+      TravelApi.currentUser = null;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RootNavigation(api: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Harusnya AdminShellPage yang muncul, bukan MainScreen
+      expect(find.byType(AdminShellPage), findsOneWidget);
+      expect(find.byType(MainScreen), findsNothing);
     });
   });
 }

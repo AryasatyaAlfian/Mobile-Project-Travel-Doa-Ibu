@@ -120,7 +120,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       widget.onLoginSuccess?.call();
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       _showError(e.message);
@@ -155,7 +157,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
       widget.onLoginSuccess?.call();
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } on GoogleAuthException catch (e) {
       if (mounted) _showError(e.message);
     } on ApiException catch (e) {
