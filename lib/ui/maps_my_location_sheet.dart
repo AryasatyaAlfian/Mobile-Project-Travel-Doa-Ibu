@@ -182,7 +182,7 @@ class _MapsMyLocationSheetState extends State<MapsMyLocationSheet> {
                     child: const Padding(
                       padding: EdgeInsets.all(10),
                       child: Icon(
-                        Icons.share_outlined,
+                        Icons.ios_share_rounded,
                         size: 20,
                         color: _ink,
                       ),

@@ -13,10 +13,12 @@ class ProfileSecurityPage extends StatefulWidget {
     super.key,
     this.api,
     this.initial2FaEnabled = false,
+    this.isAdmin = false,
   });
 
   final TravelApi? api;
   final bool initial2FaEnabled;
+  final bool isAdmin;
 
   @override
   State<ProfileSecurityPage> createState() => _ProfileSecurityPageState();
@@ -177,6 +179,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isRoleAdmin = widget.isAdmin || (widget.api?.user?.isAdmin ?? false);
     return Scaffold(
       backgroundColor: _bg,
       body: Stack(
@@ -262,84 +265,87 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                               trailing: const Icon(Icons.chevron_right_rounded, color: _ink, size: 21),
                               onTap: _openChangePasswordPage,
                             ),
-                            const SizedBox(height: 10),
 
-                            // Card 2: Autentikasi Dua Faktor
-                            Material(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() => _twoFactorEnabled = !_twoFactorEnabled);
-                                },
+                            if (!isRoleAdmin) ...[
+                              const SizedBox(height: 10),
+
+                              // Card 2: Autentikasi Dua Faktor
+                              Material(
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFF1E7D5), width: 0.8),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.02),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.verified_user_rounded, color: _ink, size: 21),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Autentikasi Dua Faktor',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: _ink,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              'Tambahkan lapisan keamanan extra untuk akun Anda',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11,
-                                                color: _muted,
-                                              ),
-                                            ),
-                                          ],
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() => _twoFactorEnabled = !_twoFactorEnabled);
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: const Color(0xFFF1E7D5), width: 0.8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.02),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Transform.scale(
-                                        scale: 0.78,
-                                        child: CupertinoSwitch(
-                                          value: _twoFactorEnabled,
-                                          activeTrackColor: _green,
-                                          inactiveTrackColor: const Color(0xFFCBD5E1),
-                                          onChanged: (val) {
-                                            setState(() => _twoFactorEnabled = val);
-                                          },
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.verified_user_rounded, color: _ink, size: 21),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Autentikasi Dua Faktor',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _ink,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 1),
+                                              Text(
+                                                'Tambahkan lapisan keamanan extra untuk akun Anda',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 11,
+                                                  color: _muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 8),
+                                        Transform.scale(
+                                          scale: 0.78,
+                                          child: CupertinoSwitch(
+                                            value: _twoFactorEnabled,
+                                            activeTrackColor: _green,
+                                            inactiveTrackColor: const Color(0xFFCBD5E1),
+                                            onChanged: (val) {
+                                              setState(() => _twoFactorEnabled = val);
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
+                              const SizedBox(height: 10),
 
-                            // Card 3: Riwayat Aktivitas
-                            _buildSecurityTile(
-                              icon: Icons.access_time_filled_rounded,
-                              title: 'Riwayat Aktivitas',
-                              subtitle: 'Lihat aktivitas login dan perangkat terkait akun Anda',
-                              trailing: const Icon(Icons.chevron_right_rounded, color: _ink, size: 21),
-                              onTap: _showActivityHistory,
-                            ),
+                              // Card 3: Riwayat Aktivitas
+                              _buildSecurityTile(
+                                icon: Icons.access_time_filled_rounded,
+                                title: 'Riwayat Aktivitas',
+                                subtitle: 'Lihat aktivitas login dan perangkat terkait akun Anda',
+                                trailing: const Icon(Icons.chevron_right_rounded, color: _ink, size: 21),
+                                onTap: _showActivityHistory,
+                              ),
+                            ],
                           ],
                         ),
                       ),

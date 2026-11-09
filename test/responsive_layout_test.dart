@@ -30,7 +30,6 @@ import 'package:mobile_project_doa_ibu/ui/profile_settings_page.dart';
 import 'package:mobile_project_doa_ibu/ui/ticket_page.dart';
 import 'package:mobile_project_doa_ibu/ui/homepage_jemaah.dart';
 import 'package:mobile_project_doa_ibu/ui/initial_landing_page.dart';
-import 'package:mobile_project_doa_ibu/ui/landing_page.dart';
 import 'package:mobile_project_doa_ibu/ui/login_page.dart';
 import 'package:mobile_project_doa_ibu/ui/register_page.dart';
 import 'package:mobile_project_doa_ibu/ui/widgets/design_frame.dart';
@@ -248,7 +247,6 @@ void main() {
   group('Tidak ada overflow di semua ukuran layar', () {
     final pages = <String, Widget Function()>{
       'Landing awal': () => InitialLandingPage(api: fakeApi(), onStart: () {}),
-      'Landing': () => LandingPage(api: fakeApi(), onContinueAsGuest: () {}),
       'Login': () => LoginPage(api: fakeApi()),
       'Register': () => RegisterPage(api: fakeApi()),
       'Lupa password': () => ForgotPasswordPage(api: fakeApi()),

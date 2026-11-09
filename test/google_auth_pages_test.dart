@@ -14,7 +14,6 @@ import 'package:mobile_project_doa_ibu/services/google_auth_service.dart';
 import 'package:mobile_project_doa_ibu/services/travel_api.dart';
 import 'package:mobile_project_doa_ibu/ui/login_page.dart';
 import 'package:mobile_project_doa_ibu/ui/initial_landing_page.dart';
-import 'package:mobile_project_doa_ibu/ui/landing_page.dart';
 import 'package:mobile_project_doa_ibu/ui/register_page.dart';
 
 class TestGoogleAuth implements GoogleAuthService {
@@ -99,33 +98,32 @@ void main() {
     TravelApi.currentUser = null;
   });
 
-  for (final initial in [true, false]) {
-    testWidgets(
-      '${initial ? 'initial' : 'secondary'} landing registration supplies an authenticated Google callback',
-      (tester) async {
-        tester.view.physicalSize = const Size(414, 1000);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        final api = TravelApi(ApiClient(httpClient: MockClient((_) async =>
-          http.Response(jsonEncode({'data': [], 'meta': {'current_page': 1, 'last_page': 1, 'total': 0}}), 200),
-        )));
-        var authenticated = 0;
-        await tester.pumpWidget(MaterialApp(home: initial
-          ? InitialLandingPage(api: api, onStart: () {}, onAuthenticated: () => authenticated++)
-          : LandingPage(api: api, onContinueAsGuest: () => authenticated++),
-        ));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Daftar'));
-        await tester.pumpAndSettle();
-        final register = tester.widget<RegisterPage>(find.byType(RegisterPage));
-        expect(register.onGoogleSignInSuccess, isNotNull);
-        register.onGoogleSignInSuccess!();
-        expect(authenticated, 1);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
+  testWidgets(
+    'landing registration supplies an authenticated Google callback',
+    (tester) async {
+      tester.view.physicalSize = const Size(414, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = TravelApi(ApiClient(httpClient: MockClient((_) async =>
+        http.Response(jsonEncode({'data': [], 'meta': {'current_page': 1, 'last_page': 1, 'total': 0}}), 200),
+      )));
+      var authenticated = 0;
+      await tester.pumpWidget(MaterialApp(home: InitialLandingPage(
+        api: api,
+        onStart: () {},
+        onAuthenticated: () => authenticated++,
+      )));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Daftar'));
+      await tester.pumpAndSettle();
+      final register = tester.widget<RegisterPage>(find.byType(RegisterPage));
+      expect(register.onGoogleSignInSuccess, isNotNull);
+      register.onGoogleSignInSuccess!();
+      expect(authenticated, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'login-to-registration keeps injected Google service and authenticated callback',

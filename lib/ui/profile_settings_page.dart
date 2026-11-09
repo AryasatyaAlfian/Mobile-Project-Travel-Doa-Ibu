@@ -16,6 +16,7 @@ class ProfileSettingsPage extends StatefulWidget {
     this.initialTheme = 'Terang',
     this.initialNotification = true,
     this.initialCurrency = 'Rupiah (IDR)',
+    this.isAdmin = false,
   });
 
   final TravelApi? api;
@@ -23,6 +24,7 @@ class ProfileSettingsPage extends StatefulWidget {
   final String initialTheme;
   final bool initialNotification;
   final String initialCurrency;
+  final bool isAdmin;
 
   @override
   State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
@@ -295,6 +297,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isRoleAdmin = widget.isAdmin || (widget.api?.user?.isAdmin ?? false);
     return Scaffold(
       backgroundColor: _bg,
       body: Stack(
@@ -455,70 +458,73 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 10),
 
-                            // Item 4: Mata Uang
-                            _buildSettingTile(
-                              icon: Icons.account_balance_wallet_outlined,
-                              title: 'Mata Uang',
-                              subtitle: _currency,
-                              onTap: _openCurrencySelection,
-                            ),
-                            const SizedBox(height: 20),
+                            if (!isRoleAdmin) ...[
+                              const SizedBox(height: 10),
 
-                            // Seksi: Lainnya
-                            Text(
-                              'Lainnya',
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: _ink,
+                              // Item 4: Mata Uang
+                              _buildSettingTile(
+                                icon: Icons.account_balance_wallet_outlined,
+                                title: 'Mata Uang',
+                                subtitle: _currency,
+                                onTap: _openCurrencySelection,
                               ),
-                            ),
-                            const SizedBox(height: 10),
+                              const SizedBox(height: 20),
 
-                            // Item 5: Tentang Aplikasi
-                            _buildSettingTile(
-                              icon: Icons.brightness_medium_outlined,
-                              title: 'Tentang Aplikasi',
-                              onTap: () {
-                                final company = _serverSettings['company_name'] as String? ?? 'Travel Doa Ibu';
-                                final email = _serverSettings['email'] as String? ?? 'info@traveldoaibu.com';
-                                final phone = _serverSettings['phone'] as String? ?? (_serverSettings['whatsapp_number'] as String? ?? '6281234567890');
-                                final address = _serverSettings['address'] as String?;
-
-                                final text = '$company Mobile v1.0.0\n\n'
-                                    'Aplikasi pendamping perjalanan ibadah Umrah dan Haji terpadu, memudahkan pendaftaran, pemantauan jadwal manasik, bimbingan Muthawwif secara langsung, dan pengelolaan pembayaran secara aman dan transparan.\n\n'
-                                    'Kontak Resmi:\n'
-                                    '• Email: $email\n'
-                                    '• Telepon / WA: $phone'
-                                    '${address != null && address.isNotEmpty ? '\n• Alamat: $address' : ''}';
-
-                                _showInfoDialog('Tentang Aplikasi', text);
-                              },
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Item 6: Syarat dan Ketentuan
-                            _buildSettingTile(
-                              icon: Icons.description_outlined,
-                              title: 'Syarat dan Ketentuan',
-                              onTap: () => _showInfoDialog(
-                                'Syarat dan Ketentuan',
-                                '1. Ketentuan Pendaftaran\nCalon jemaah wajib mengisi data diri dengan benar sesuai identitas paspor/KTP.\n\n2. Pembayaran & Pembatalan\nPembayaran dapat dilakukan bertahap sesuai skema paket yang dipilih. Pembatalan tiket mengikuti regulasi maskapai dan akomodasi hotel di Arab Saudi.\n\n3. Kebijakan Kesehatan\nJemaah wajib memenuhi persyaratan vaksinasi dan tes kesehatan yang diwajibkan oleh Kementerian Haji dan Umrah Kerajaan Arab Saudi.',
+                              // Seksi: Lainnya
+                              Text(
+                                'Lainnya',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: _ink,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
+                              const SizedBox(height: 10),
 
-                            // Item 7: Kebijakan Privasi
-                            _buildSettingTile(
-                              icon: Icons.shield_outlined,
-                              title: 'Kebijakan Privasi',
-                              onTap: () => _showInfoDialog(
-                                'Kebijakan Privasi',
-                                'Kami menghargai privasi Anda dan berkomitmen melindungi seluruh data pribadi serta dokumen perjalanan Anda. Data nomor paspor, foto KTP, dan bukti pembayaran hanya digunakan untuk keperluan pengurusan visa, reservasi tiket, dan administrasi resmi ibadah.',
+                              // Item 5: Tentang Aplikasi
+                              _buildSettingTile(
+                                icon: Icons.brightness_medium_outlined,
+                                title: 'Tentang Aplikasi',
+                                onTap: () {
+                                  final company = _serverSettings['company_name'] as String? ?? 'Travel Doa Ibu';
+                                  final email = _serverSettings['email'] as String? ?? 'info@traveldoaibu.com';
+                                  final phone = _serverSettings['phone'] as String? ?? (_serverSettings['whatsapp_number'] as String? ?? '6281234567890');
+                                  final address = _serverSettings['address'] as String?;
+
+                                  final text = '$company Mobile v1.0.0\n\n'
+                                      'Aplikasi pendamping perjalanan ibadah Umrah dan Haji terpadu, memudahkan pendaftaran, pemantauan jadwal manasik, bimbingan Muthawwif secara langsung, dan pengelolaan pembayaran secara aman dan transparan.\n\n'
+                                      'Kontak Resmi:\n'
+                                      '• Email: $email\n'
+                                      '• Telepon / WA: $phone'
+                                      '${address != null && address.isNotEmpty ? '\n• Alamat: $address' : ''}';
+
+                                  _showInfoDialog('Tentang Aplikasi', text);
+                                },
                               ),
-                            ),
+                              const SizedBox(height: 10),
+
+                              // Item 6: Syarat dan Ketentuan
+                              _buildSettingTile(
+                                icon: Icons.description_outlined,
+                                title: 'Syarat dan Ketentuan',
+                                onTap: () => _showInfoDialog(
+                                  'Syarat dan Ketentuan',
+                                  '1. Ketentuan Pendaftaran\nCalon jemaah wajib mengisi data diri dengan benar sesuai identitas paspor/KTP.\n\n2. Pembayaran & Pembatalan\nPembayaran dapat dilakukan bertahap sesuai skema paket yang dipilih. Pembatalan tiket mengikuti regulasi maskapai dan akomodasi hotel di Arab Saudi.\n\n3. Kebijakan Kesehatan\nJemaah wajib memenuhi persyaratan vaksinasi dan tes kesehatan yang diwajibkan oleh Kementerian Haji dan Umrah Kerajaan Arab Saudi.',
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Item 7: Kebijakan Privasi
+                              _buildSettingTile(
+                                icon: Icons.shield_outlined,
+                                title: 'Kebijakan Privasi',
+                                onTap: () => _showInfoDialog(
+                                  'Kebijakan Privasi',
+                                  'Kami menghargai privasi Anda dan berkomitmen melindungi seluruh data pribadi serta dokumen perjalanan Anda. Data nomor paspor, foto KTP, dan bukti pembayaran hanya digunakan untuk keperluan pengurusan visa, reservasi tiket, dan administrasi resmi ibadah.',
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

@@ -68,6 +68,53 @@ class ItineraryDay {
   final String? meals;
 }
 
+class PackageFeatureItem {
+  PackageFeatureItem({required this.title, this.icon, this.description});
+
+  factory PackageFeatureItem.fromJson(Map<String, dynamic> json) => PackageFeatureItem(
+        title: json['title'] as String? ?? '',
+        icon: json['icon'] as String?,
+        description: json['description'] as String?,
+      );
+
+  final String title;
+  final String? icon;
+  final String? description;
+}
+
+class DepartureGroupItem {
+  DepartureGroupItem({
+    required this.id,
+    required this.name,
+    this.departureDate,
+    this.returnDate,
+    this.price,
+    this.quota,
+    this.remainingQuota,
+    this.isFull = false,
+  });
+
+  factory DepartureGroupItem.fromJson(Map<String, dynamic> json) => DepartureGroupItem(
+        id: json['id'] as int,
+        name: json['name'] as String? ?? '',
+        departureDate: json['departure_date'] != null ? DateTime.tryParse(json['departure_date'] as String) : null,
+        returnDate: json['return_date'] != null ? DateTime.tryParse(json['return_date'] as String) : null,
+        price: (json['price'] as num?)?.toDouble(),
+        quota: json['quota'] as int?,
+        remainingQuota: json['remaining_quota'] as int?,
+        isFull: json['is_full'] as bool? ?? false,
+      );
+
+  final int id;
+  final String name;
+  final DateTime? departureDate;
+  final DateTime? returnDate;
+  final double? price;
+  final int? quota;
+  final int? remainingQuota;
+  final bool isFull;
+}
+
 class TravelPackage {
   TravelPackage({
     required this.id,
@@ -79,12 +126,21 @@ class TravelPackage {
     this.departureDate,
     this.startingPrice,
     this.quota,
+    this.remainingQuota,
+    this.isFull = false,
     this.isFeatured = false,
     this.image,
     this.category,
     this.description,
+    this.airline,
+    this.hotel,
+    this.meals,
+    this.pricing,
+    this.importantNotes,
+    this.departureGroups = const [],
     this.images = const [],
     this.itineraries = const [],
+    this.features = const [],
     this.inclusions = const [],
     this.exclusions = const [],
   });
@@ -99,16 +155,33 @@ class TravelPackage {
         departureDate: json['departure_date'] != null ? DateTime.tryParse(json['departure_date'] as String) : null,
         startingPrice: (json['starting_price'] as num?)?.toDouble(),
         quota: json['quota'] as int?,
+        remainingQuota: json['remaining_quota'] as int?,
+        isFull: json['is_full'] as bool? ?? false,
         isFeatured: json['is_featured'] as bool? ?? false,
         image: json['image'] as String?,
         category: json['category'] is Map<String, dynamic>
             ? PackageCategory.fromJson(json['category'] as Map<String, dynamic>)
             : null,
         description: json['description'] as String?,
+        airline: json['airline'] as String?,
+        hotel: json['hotel'] as String?,
+        meals: json['meals'] as String?,
+        pricing: json['pricing'] is Map ? (json['pricing'] as Map).cast<String, dynamic>() : null,
+        importantNotes: json['important_notes'] as String?,
+        departureGroups: (json['departure_groups'] as List?)
+                ?.cast<Map<String, dynamic>>()
+                .map(DepartureGroupItem.fromJson)
+                .toList() ??
+            const [],
         images: (json['images'] as List?)?.map((e) => (e as Map)['url'] as String?).whereType<String>().toList() ?? const [],
         itineraries: (json['itineraries'] as List?)
                 ?.cast<Map<String, dynamic>>()
                 .map(ItineraryDay.fromJson)
+                .toList() ??
+            const [],
+        features: (json['features'] as List?)
+                ?.cast<Map<String, dynamic>>()
+                .map(PackageFeatureItem.fromJson)
                 .toList() ??
             const [],
         inclusions: (json['inclusions'] as List?)?.map((e) => '$e').toList() ?? const [],
@@ -124,14 +197,23 @@ class TravelPackage {
   final DateTime? departureDate;
   final double? startingPrice;
   final int? quota;
+  final int? remainingQuota;
+  final bool isFull;
   final bool isFeatured;
   final String? image;
   final PackageCategory? category;
 
   // Hanya terisi dari endpoint detail.
   final String? description;
+  final String? airline;
+  final String? hotel;
+  final String? meals;
+  final Map<String, dynamic>? pricing;
+  final String? importantNotes;
+  final List<DepartureGroupItem> departureGroups;
   final List<String> images;
   final List<ItineraryDay> itineraries;
+  final List<PackageFeatureItem> features;
   final List<String> inclusions;
   final List<String> exclusions;
 }
@@ -189,15 +271,27 @@ class AppUser {
     this.phone,
   });
 
-  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        email: json['email'] as String,
-        isAdmin: json['is_admin'] as bool? ?? false,
-        role: json['role'] as String? ?? (json['is_admin'] == true ? 'admin' : 'jemaah'),
-        roleLabel: json['role_label'] as String? ?? 'Jemaah',
-        phone: json['phone'] as String?,
-      );
+  factory AppUser.fromJson(Map<String, dynamic> json) {
+    final rawRole = (json['role'] as String?)?.toLowerCase();
+    final bool isAdminFlag = json['is_admin'] == true || rawRole == 'admin';
+    final String normalizedRole = rawRole == 'admin' || isAdminFlag
+        ? 'admin'
+        : (rawRole == 'muthawwif' ? 'muthawwif' : 'jemaah');
+    final String normalizedLabel = json['role_label'] as String? ??
+        (normalizedRole == 'admin'
+            ? 'Admin'
+            : (normalizedRole == 'muthawwif' ? 'Muthawwif' : 'Jemaah'));
+
+    return AppUser(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      isAdmin: isAdminFlag,
+      role: normalizedRole,
+      roleLabel: normalizedLabel,
+      phone: json['phone'] as String?,
+    );
+  }
 
   final int id;
   final String name;
@@ -207,8 +301,9 @@ class AppUser {
   final String roleLabel;
   final String? phone;
 
-  bool get isJemaah => role == 'jemaah';
+  bool get isJemaah => role == 'jemaah' || role == 'user';
   bool get isMuthawwif => role == 'muthawwif';
+  bool get isAdminRole => role == 'admin' || isAdmin;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -264,6 +359,7 @@ class BookingRequest {
     required this.customerCity,
     required this.participants,
     this.packageId,
+    this.departureGroupId,
     this.preferredDate,
     this.specialRequests,
     this.contactPreference = 'whatsapp',
@@ -271,6 +367,7 @@ class BookingRequest {
 
   final int packageCategoryId;
   final int? packageId;
+  final int? departureGroupId;
   final String customerName;
   final String customerWhatsapp; // format 08xxxxxxxxxx
   final String customerEmail;
@@ -283,12 +380,14 @@ class BookingRequest {
   Map<String, dynamic> toJson() => {
         'package_category_id': packageCategoryId,
         if (packageId != null) 'package_id': packageId,
+        if (departureGroupId != null) 'departure_group_id': departureGroupId,
         'customer_name': customerName,
         'customer_whatsapp': customerWhatsapp,
         'customer_email': customerEmail,
         'customer_city': customerCity,
         'participants': participants,
-        if (preferredDate != null) 'preferred_date': preferredDate!.toIso8601String().substring(0, 10),
+        if (departureGroupId == null && preferredDate != null)
+          'preferred_date': preferredDate!.toIso8601String().substring(0, 10),
         if (specialRequests != null) 'special_requests': specialRequests,
         'contact_preference': contactPreference,
         'terms_accepted': true,

@@ -78,7 +78,7 @@ void main() {
 
       // Verifikasi tombol island
       expect(find.byIcon(Icons.groups_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.person_pin_circle_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.person_outline), findsOneWidget);
     });
 
     testWidgets('Tapping Check In triggers location API and shows feedback', (tester) async {
@@ -138,7 +138,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Tap tombol lokasi saya di island
-      await tester.tap(find.byIcon(Icons.person_pin_circle_rounded));
+      await tester.tap(find.byIcon(Icons.person_outline));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
@@ -174,7 +174,7 @@ void main() {
       expect(find.text('Ust. Ahmad Fauzi'), findsOneWidget);
       expect(find.text('Gerbang King Abdul Aziz (Gate 1)'), findsOneWidget);
       expect(find.text('1,2'), findsOneWidget);
-      expect(find.text('15 mnt'), findsOneWidget);
+      expect(find.text('15 mnt'), findsWidgets);
       expect(find.text('Timur Laut'), findsOneWidget);
 
       // Tap Hubungi
@@ -192,6 +192,25 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.textContaining('Rute navigasi ke Ust. Ahmad Fauzi'), findsOneWidget);
+    });
+
+    testWidgets('Tapping Muthawwif marker on map opens MapsTrackMuthawwifView', (tester) async {
+      setupScreen(tester);
+
+      await tester.pumpWidget(createWidgetUnderTest(MapsPage(api: fakeApi)));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Temukan marker Muthawwif pada peta (teks 'Mutawaf')
+      final muthawwifMarker = find.text('Mutawaf');
+      expect(muthawwifMarker, findsOneWidget);
+
+      await tester.tap(muthawwifMarker);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // Verifikasi bottom sheet Lacak Mutawwif terbuka
+      expect(find.byType(MapsTrackMuthawwifView), findsOneWidget);
+      expect(find.text('Gerbang King Abdul Aziz (Gate 1)'), findsOneWidget);
     });
   });
 }

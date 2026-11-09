@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/smooth_page_route.dart';
 import '../models/ticket_order.dart';
 import '../services/ticket_service.dart';
+import 'eticket_view_page.dart';
 import 'widgets/skeleton_view.dart';
 
 /// Elysian Horizon — Halaman Tiket Saya (Tiket, Riwayat Order, Detail Order)
@@ -35,6 +37,7 @@ class _TicketPageState extends State<TicketPage> {
   late List<TicketOrder> _activeTickets;
   late List<TicketOrder> _completedTickets;
   TicketOrder? _selectedTicket;
+  bool _openedFromTicketPage = false;
 
   static const Color _gold = Color(0xFFECC485);
   static const Color _ink = Color(0xFF1F1F1F);
@@ -75,10 +78,10 @@ class _TicketPageState extends State<TicketPage> {
 
     if (widget.initialTicketId != null) {
       _selectedTicket = TicketService.instance.getTicketById(widget.initialTicketId!);
+      if (_selectedTicket != null) {
+        _openedFromTicketPage = true;
+      }
     }
-    _selectedTicket ??= _activeTickets.isNotEmpty
-        ? _activeTickets.first
-        : (_completedTickets.isNotEmpty ? _completedTickets.first : null);
   }
 
   @override
@@ -88,8 +91,22 @@ class _TicketPageState extends State<TicketPage> {
   }
 
   void _switchTab(int index) {
-    if (_currentTab == index) return;
-    setState(() => _currentTab = index);
+    if (_currentTab == index) {
+      if (index == 2 && _selectedTicket != null) {
+        setState(() {
+          _selectedTicket = null;
+          _openedFromTicketPage = false;
+        });
+      }
+      return;
+    }
+    setState(() {
+      _currentTab = index;
+      if (index == 2) {
+        _selectedTicket = null;
+        _openedFromTicketPage = false;
+      }
+    });
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 350),
@@ -100,6 +117,7 @@ class _TicketPageState extends State<TicketPage> {
   void _openDetailOrder(TicketOrder ticket) {
     setState(() {
       _selectedTicket = ticket;
+      _openedFromTicketPage = true;
       _currentTab = 2;
     });
     _pageController.animateToPage(
@@ -150,6 +168,8 @@ class _TicketPageState extends State<TicketPage> {
       if (!mounted) return;
 
       setState(() {
+        _selectedTicket = null;
+        _openedFromTicketPage = false;
         _loadTickets();
       });
 
@@ -167,71 +187,6 @@ class _TicketPageState extends State<TicketPage> {
     }
   }
 
-  void _showEticketDialog(TicketOrder ticket) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'E-Tiket Digital',
-                    style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _bg,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _gold.withValues(alpha: 0.6)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(ticket.route, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)),
-                    Text(ticket.packageName, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700)),
-                    const Divider(height: 20),
-                    Text('Penumpang: ${ticket.passengerName}', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
-                    Text('Maskapai: ${ticket.airline} (${ticket.flightNumber})', style: GoogleFonts.poppins(fontSize: 12)),
-                    Text('Jadwal: ${ticket.departureSchedule}', style: GoogleFonts.poppins(fontSize: 12)),
-                    Text('Order ID: ${ticket.id}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: 180,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black26),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text('||||| |||| || |||||||', style: GoogleFonts.poppins(fontSize: 18, letterSpacing: 4, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 12),
-              Text('Tunjukkan barcode ini kepada petugas saat check-in.', textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showPaymentProofDialog(TicketOrder ticket) {
     showDialog<void>(
       context: context,
@@ -245,9 +200,11 @@ class _TicketPageState extends State<TicketPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Bukti Pembayaran',
-                    style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: Text(
+                      'Bukti Pembayaran',
+                      style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
@@ -269,8 +226,9 @@ class _TicketPageState extends State<TicketPage> {
                     const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32), size: 48),
                     const SizedBox(height: 8),
                     Text(
-                      ticket.isPendingPayment ? 'Menunggu Pembayaran' : 'Transaksi Terverifikasi',
-                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700),
+                      ticket.isPendingPayment ? 'Menunggu Pembayaran' : 'Transaksi Terverifikasi • Sudah Dibayar',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700, color: _ink),
                     ),
                     const Divider(height: 24),
                     _buildProofRow('Order ID', ticket.id),
@@ -278,6 +236,32 @@ class _TicketPageState extends State<TicketPage> {
                     _buildProofRow('Nama', ticket.passengerName),
                     _buildProofRow('Status', ticket.statusLabel),
                     _buildProofRow('Metode', 'Transfer Bank / Midtrans'),
+                    if (ticket.isPendingPayment) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await TicketService.instance.updateTicketStatus(ticket.id, 'confirmed');
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (!mounted) return;
+                          setState(() => _loadTickets());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Pembayaran tiket #${ticket.id} berhasil! Status: Sudah Dibayar'),
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.payment_rounded, size: 16),
+                        label: const Text('Bayar Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFECC485),
+                          foregroundColor: const Color(0xFF1F1F1F),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -290,12 +274,28 @@ class _TicketPageState extends State<TicketPage> {
 
   Widget _buildProofRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
-          Text(value, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _ink,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -361,18 +361,62 @@ class _TicketPageState extends State<TicketPage> {
               bottom: false,
               child: Column(
                 children: [
-                  const SizedBox(height: 8),
-                  // Judul "Tiket Saya"
-                  Text(
-                    'Tiket Saya',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: _gold,
-                      letterSpacing: 0.5,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            if (_currentTab == 2 && _selectedTicket != null) {
+                              if (_openedFromTicketPage) {
+                                _switchTab(0);
+                              } else {
+                                setState(() => _selectedTicket = null);
+                              }
+                            } else if (_currentTab > 0) {
+                              _switchTab(0);
+                            } else {
+                              Navigator.maybePop(context);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.arrow_back, color: _ink, size: 18),
+                          ),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              _currentTab == 2
+                                  ? 'Detail Order'
+                                  : (_currentTab == 1 ? 'Riwayat Order' : 'Tiket Saya'),
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: _gold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 38), // spacer penyeimbang
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // 3-Tab Segmented Capsule (Glassmorphism)
                   Padding(
@@ -411,7 +455,12 @@ class _TicketPageState extends State<TicketPage> {
                       controller: _pageController,
                       physics: const ClampingScrollPhysics(),
                       onPageChanged: (idx) {
-                        setState(() => _currentTab = idx);
+                        setState(() {
+                          _currentTab = idx;
+                          if (idx != 2) {
+                            _openedFromTicketPage = false;
+                          }
+                        });
                       },
                       children: [
                         _buildTiketSayaTab(),
@@ -593,32 +642,17 @@ class _TicketPageState extends State<TicketPage> {
   }
 
   // ===========================================================================
-  // SUB-TAB 3: DETAIL ORDER (Full Order Inspection)
+  // SUB-TAB 3: DETAIL ORDER (Full Order Inspection sesuai Gambar 2)
   // ===========================================================================
   Widget _buildDetailOrderTab() {
     if (_isLoading) {
       return _buildSkeletonDetailView();
     }
 
-    final ticket = _selectedTicket ?? (_activeTickets.isNotEmpty ? _activeTickets.first : null);
+    final ticket = _selectedTicket;
 
     if (ticket == null) {
-      return RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: _gold,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Container(
-            height: 380,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Pilih tiket dari tab Tiket Saya atau Riwayat Order.',
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600),
-            ),
-          ),
-        ),
-      );
+      return _buildOrderSelectionView();
     }
 
     return RefreshIndicator(
@@ -630,225 +664,1016 @@ class _TicketPageState extends State<TicketPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Kartu Ringkasan Tiket (Dengan Tombol Hapus)
-            _buildTicketCard(ticket, isHistory: false, isDetailMode: true),
+            // Baris Tombol Pilih Pesanan Lain
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Order ID #${ticket.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedTicket = null;
+                        _openedFromTicketPage = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.swap_horiz_rounded, size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Ganti Pesanan',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 1. Header Card Ringkasan Paket (Gambar 2)
+            _buildDetailSummaryCard(ticket),
+            const SizedBox(height: 14),
+
+            // 2. WhatsApp Community Card: Grup WhatsApp Keberangkatan (Gambar 2)
+            _buildWhatsAppCommunityCard(ticket),
             const SizedBox(height: 16),
 
-          // 2. Kartu Detail Keberangkatan (Flight Timeline)
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+            // 3. Detail Penerbangan (Gambar 2)
+            _buildFlightDetailCard(ticket),
+            const SizedBox(height: 16),
+
+            // 4. Detail Pesanan (Gambar 2)
+            _buildOrderDetailCard(ticket),
+            const SizedBox(height: 16),
+
+            // 5. Pembayaran (Gambar 2)
+            _buildPaymentCard(ticket),
+            const SizedBox(height: 16),
+
+            // 6. Tour Leader (Gambar 2)
+            _buildTourLeaderCard(ticket),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Tampilan Pemilihan Pesanan saat tab Detail Order dibuka secara langsung
+  Widget _buildOrderSelectionView() {
+    final Set<String> seenIds = {};
+    final List<TicketOrder> allTickets = [];
+    for (final t in [..._activeTickets, ..._completedTickets]) {
+      if (seenIds.add(t.id)) {
+        allTickets.add(t);
+      }
+    }
+
+    if (allTickets.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: _gold,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 380,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inbox_outlined, size: 54, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                Text(
+                  'Belum Ada Pesanan',
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: _ink),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Belum ada tiket atau pesanan yang terdaftar.',
+                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Detail Keberangkatan',
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: _ink,
-                  ),
-                ),
-                const SizedBox(height: 16),
+          ),
+        ),
+      );
+    }
 
-                // Flight Timeline Vertikal
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: _gold,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
+        itemCount: allTickets.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Container(
+              padding: const EdgeInsets.all(14),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _gold.withValues(alpha: 0.35)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _gold.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.touch_app_rounded, color: Color(0xFF8B6B23), size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pilih Pesanan',
+                          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: _ink),
+                        ),
+                        Text(
+                          'Pilih salah satu pesanan untuk melihat detail rincian:',
+                          style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          final ticket = allTickets[index - 1];
+          return _buildOrderSelectionCard(ticket);
+        },
+      ),
+    );
+  }
+
+  /// Kartu Pesanan untuk Pemilihan di Tab Detail Order
+  Widget _buildOrderSelectionCard(TicketOrder ticket) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedTicket = ticket;
+              _openedFromTicketPage = false;
+            });
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Order ID: #${ticket.id}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildStatusBadge(ticket),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Kolom Kiri: Ikon & Garis Vertikal Emas
-                    Column(
-                      children: [
-                        const Icon(Icons.flight_takeoff_rounded, color: _gold, size: 24),
-                        Container(
-                          width: 2,
-                          height: 70,
-                          color: _gold,
-                        ),
-                        const Icon(Icons.flight_land_rounded, color: _gold, size: 24),
-                      ],
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 54,
+                        height: 54,
+                        child: _buildTicketThumbnail(ticket.imageUrl),
+                      ),
                     ),
-                    const SizedBox(width: 14),
-
-                    // Kolom Kanan: Rincian Jadwal
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Titik Berangkat
                           Text(
-                            ticket.route.split(' - ').first,
-                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            ticket.departureSchedule,
-                            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                          ),
-                          Text(
-                            ticket.departureAirport,
-                            style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey.shade500),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Kartu Info Maskapai di Tengah
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      ticket.airline,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFFD71921),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      ticket.flightNumber,
-                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    ticket.flightDuration,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ],
+                            ticket.packageName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: _ink,
                             ),
                           ),
-                          const SizedBox(height: 14),
-
-                          // Titik Tiba
+                          const SizedBox(height: 2),
                           Text(
-                            ticket.route.split(' - ').last,
-                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700),
+                            '${ticket.airline} • ${ticket.flightNumber}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                           Text(
-                            ticket.arrivalSchedule,
-                            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                          ),
-                          Text(
-                            ticket.arrivalAirport,
-                            style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey.shade500),
+                            '${ticket.originCode} → ${ticket.destinationCode} • ${ticket.departureSchedule}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF8B6B23),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // 3. Kartu Informasi Penumpang
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                const Divider(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Nama: ${ticket.passengerName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Pilih Detail',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF8B6B23),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 11,
+                          color: Color(0xFF8B6B23),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSummaryCard(TicketOrder ticket) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF4DE),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.flight_takeoff_rounded,
+              color: Color(0xFF9E651E),
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF2E7D32)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Dikonfirmasi',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                      tooltip: 'Batalkan Pesanan',
+                      onPressed: () => _handleDeleteTicket(ticket),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  'Informasi Penumpang',
+                  ticket.route,
                   style: GoogleFonts.poppins(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _ink,
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // Nama Penumpang & Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        ticket.passengerName,
-                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _gold,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          ticket.passengerType,
-                          style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: _ink),
-                        ),
-                      ),
-                    ],
+                Text(
+                  ticket.packageName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: Colors.grey.shade600,
                   ),
                 ),
-                const SizedBox(height: 14),
-
-                // Fasilitas Kabin, Bagasi, Kursi
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    _buildAmenityItem(Icons.work_outline_rounded, ticket.cabinBaggage),
-                    _buildAmenityItem(Icons.luggage_outlined, ticket.checkedBaggage),
-                    _buildAmenityItem(Icons.airline_seat_recline_normal_rounded, ticket.seatInfo),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  'Order ID: ${ticket.id}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-  Widget _buildAmenityItem(IconData icon, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildWhatsAppCommunityCard(TicketOrder ticket) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.6), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF25D366).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: Color(0xFF25D366),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Grup WhatsApp Keberangkatan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _ink,
+                      ),
+                    ),
+                    Text(
+                      '${ticket.packageName.contains('Japan') ? 'Japan Discovery' : 'Umrah Barokah'} · ${ticket.departureSchedule.split(' - ').first}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Gabung untuk info jadwal, titik kumpul, dan pengumuman penting dari tour leader selama perjalanan.',
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              color: Colors.grey.shade700,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Avatar stack jemaah
+          Row(
+            children: [
+              SizedBox(
+                width: 76,
+                height: 26,
+                child: Stack(
+                  children: [
+                    _buildMiniAvatar(0, 'A', const Color(0xFFD4E6F1), const Color(0xFF2471A3)),
+                    _buildMiniAvatar(16, 'S', const Color(0xFFFCF3CF), const Color(0xFFB7950B)),
+                    _buildMiniAvatar(32, 'R', const Color(0xFFD5F5E3), const Color(0xFF229954)),
+                    _buildMiniAvatar(48, '+', const Color(0xFFF2D7D5), const Color(0xFF922B21)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '24 jemaah sudah bergabung',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Tombol Gabung Grup WhatsApp
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Membuka Grup WhatsApp...', style: GoogleFonts.poppins(fontSize: 13)),
+                    backgroundColor: const Color(0xFF25D366),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+              label: Text(
+                'Gabung Grup WhatsApp',
+                style: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Link dan tombol Salin
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  ticket.whatsappGroupUrl,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: 'https://${ticket.whatsappGroupUrl}'));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Tautan grup WhatsApp disalin!', style: GoogleFonts.poppins(fontSize: 13)),
+                      backgroundColor: const Color(0xFF2E7D32),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.copy_rounded, size: 14, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Salin',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: _ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniAvatar(double left, String initial, Color bg, Color fg) {
+    return Positioned(
+      left: left,
+      child: Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: bg,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initial,
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: fg,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlightDetailCard(TicketOrder ticket) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: _gold),
-        const SizedBox(width: 6),
+        Text(
+          'Detail Penerbangan',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.airline,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFD71921),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      ticket.flightCodePair,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      ticket.departureSchedule,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${ticket.originCity} (${ticket.originCode}) → ${ticket.destinationCity} (${ticket.destinationCode})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderDetailCard(TicketOrder ticket) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Detail Pesanan',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildDetailRow('Paket', ticket.packageName),
+              const Divider(height: 20, thickness: 0.8),
+              _buildDetailRow('Keberangkatan', ticket.departureSchedule.split(' - ').first),
+              const Divider(height: 20, thickness: 0.8),
+              _buildDetailRow('Kepulangan', ticket.returnDateFormatted),
+              const Divider(height: 20, thickness: 0.8),
+              _buildDetailRow('Jumlah Peserta', '1 ${ticket.passengerType}'),
+              const Divider(height: 20, thickness: 0.8),
+              _buildDetailRow('Tipe Kamar', ticket.roomType),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentCard(TicketOrder ticket) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pembayaran',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildDetailRow('Metode', ticket.paymentMethod),
+              const Divider(height: 20, thickness: 0.8),
+              _buildDetailRow('Tanggal Bayar', '02 Jan 2026 · 14:20'),
+              const Divider(height: 20, thickness: 0.8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Status',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Lunas',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24, thickness: 1.2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Dibayar',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  Flexible(
+                    child: Text(
+                      ticket.totalPaidFormatted,
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: _ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTourLeaderCard(TicketOrder ticket) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tour Leader',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF4DE),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'RH',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF9E651E),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.tourLeaderName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _ink,
+                      ),
+                    ),
+                    Text(
+                      ticket.tourLeaderRole,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Tombol Call
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Menghubungi ${ticket.tourLeaderName}...', style: GoogleFonts.poppins(fontSize: 13)),
+                      backgroundColor: _ink,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: const Icon(Icons.phone_outlined, color: _ink, size: 18),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Tombol WhatsApp
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Membuka chat WhatsApp ${ticket.tourLeaderName}...', style: GoogleFonts.poppins(fontSize: 13)),
+                      backgroundColor: const Color(0xFF25D366),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8F5E9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 18),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
         Text(
           label,
-          style: GoogleFonts.poppins(fontSize: 10.5, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: _ink,
+            ),
+          ),
         ),
       ],
     );
@@ -875,7 +1700,13 @@ class _TicketPageState extends State<TicketPage> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: isHistory ? () => _openDetailOrder(ticket) : null,
+          onTap: isHistory
+              ? () {
+                  Navigator.of(context).push(
+                    SmoothPageRoute(page: ETicketViewPage(ticket: ticket)),
+                  );
+                }
+              : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1006,7 +1837,11 @@ class _TicketPageState extends State<TicketPage> {
                         child: _buildActionButton(
                           label: 'E-tiket',
                           icon: Icons.confirmation_num_outlined,
-                          onTap: () => _showEticketDialog(ticket),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              SmoothPageRoute(page: ETicketViewPage(ticket: ticket)),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1056,9 +1891,13 @@ class _TicketPageState extends State<TicketPage> {
           children: [
             const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF856404)),
             const SizedBox(width: 4),
-            Text(
-              'Menunggu Pembayaran',
-              style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF856404)),
+            Flexible(
+              child: Text(
+                'Menunggu Pembayaran',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF856404)),
+              ),
             ),
           ],
         ),
@@ -1077,9 +1916,13 @@ class _TicketPageState extends State<TicketPage> {
           children: [
             const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF155724)),
             const SizedBox(width: 4),
-            Text(
-              'Dikonfirmasi',
-              style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF155724)),
+            Flexible(
+              child: Text(
+                'Sudah Dibayar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF155724)),
+              ),
             ),
           ],
         ),

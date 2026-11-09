@@ -51,18 +51,58 @@ class TicketOrder {
   final String imageUrl;
   final DateTime createdAt;
 
-  bool get isPendingPayment => status == 'new';
-  bool get isConfirmed => status == 'booked' || status == 'confirmed';
+  bool get isPendingPayment => status == 'new' || status == 'pending';
+  bool get isConfirmed => status == 'booked' || status == 'confirmed' || status == 'paid';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
 
   String get statusLabel {
+    if (status == 'paid' || status == 'confirmed') return 'Sudah Dibayar';
+    if (status == 'booked') return 'Dikonfirmasi';
     if (isPendingPayment) return 'Menunggu Pembayaran';
-    if (isConfirmed) return 'Dikonfirmasi';
     if (isCompleted) return 'Selesai';
     if (isCancelled) return 'Dibatalkan';
     return status;
   }
+
+  /// Helper untuk tampilan E-Tiket & Detail Order presisi sesuai Figma
+  String get bookingCode => 'TDI-$id';
+  String get ticketNumber => '176-2400$id';
+
+  String get originCode => 'CGK';
+  String get originCity => 'Jakarta';
+
+  String get destinationCode {
+    if (route.toLowerCase().contains('tokyo') || packageName.toLowerCase().contains('japan') || packageName.toLowerCase().contains('jepang')) {
+      return 'NRT';
+    }
+    return 'JED';
+  }
+
+  String get destinationCity {
+    if (route.toLowerCase().contains('tokyo') || packageName.toLowerCase().contains('japan') || packageName.toLowerCase().contains('jepang')) {
+      return 'Tokyo Narita';
+    }
+    return 'Jeddah';
+  }
+
+  String get transitInfo {
+    if (airline.toLowerCase().contains('saudia')) return 'Penerbangan Langsung';
+    return '1x transit · Dubai (DXB)';
+  }
+
+  String get flightCodePair => flightNumber.contains('·') ? flightNumber : 'EK 357 · EK 318';
+  String get cabinClass => 'Ekonomi';
+  String get seatNumber => seatInfo.contains('Disesuaikan') ? '32A' : seatInfo;
+  String get baggageWeight => checkedBaggage.contains('Bagasi') ? checkedBaggage.replaceAll('Bagasi ', '') : '30 kg';
+
+  String get whatsappGroupUrl => 'chat.whatsapp.com/JpD15Jan-Doaibu';
+  String get tourLeaderName => 'Rizal Hakim';
+  String get tourLeaderRole => 'Tour Leader · ${packageName.toLowerCase().contains('japan') ? 'Japan Discovery' : 'Umrah Reguler'}';
+  String get paymentMethod => 'Virtual Account BSI';
+  String get totalPaidFormatted => 'Rp 15.000.000';
+  String get roomType => 'Double';
+  String get returnDateFormatted => '21 Januari 2026';
 
   TicketOrder copyWith({
     String? id,
