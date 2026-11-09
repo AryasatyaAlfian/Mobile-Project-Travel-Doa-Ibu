@@ -271,15 +271,27 @@ class AppUser {
     this.phone,
   });
 
-  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        email: json['email'] as String,
-        isAdmin: json['is_admin'] as bool? ?? false,
-        role: json['role'] as String? ?? (json['is_admin'] == true ? 'admin' : 'jemaah'),
-        roleLabel: json['role_label'] as String? ?? 'Jemaah',
-        phone: json['phone'] as String?,
-      );
+  factory AppUser.fromJson(Map<String, dynamic> json) {
+    final rawRole = (json['role'] as String?)?.toLowerCase();
+    final bool isAdminFlag = json['is_admin'] == true || rawRole == 'admin';
+    final String normalizedRole = rawRole == 'admin' || isAdminFlag
+        ? 'admin'
+        : (rawRole == 'muthawwif' ? 'muthawwif' : 'jemaah');
+    final String normalizedLabel = json['role_label'] as String? ??
+        (normalizedRole == 'admin'
+            ? 'Admin'
+            : (normalizedRole == 'muthawwif' ? 'Muthawwif' : 'Jemaah'));
+
+    return AppUser(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      isAdmin: isAdminFlag,
+      role: normalizedRole,
+      roleLabel: normalizedLabel,
+      phone: json['phone'] as String?,
+    );
+  }
 
   final int id;
   final String name;
@@ -289,8 +301,9 @@ class AppUser {
   final String roleLabel;
   final String? phone;
 
-  bool get isJemaah => role == 'jemaah';
+  bool get isJemaah => role == 'jemaah' || role == 'user';
   bool get isMuthawwif => role == 'muthawwif';
+  bool get isAdminRole => role == 'admin' || isAdmin;
 
   Map<String, dynamic> toJson() => {
         'id': id,

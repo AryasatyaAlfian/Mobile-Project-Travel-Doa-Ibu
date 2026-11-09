@@ -7,10 +7,12 @@ import 'core/app_colors.dart';
 import 'core/app_theme.dart';
 import 'models/models.dart';
 import 'services/travel_api.dart';
+import 'ui/admin_landing_page.dart';
 import 'ui/homepage_jemaah.dart';
 import 'ui/initial_landing_page.dart';
 import 'ui/landing_page.dart';
 import 'ui/maps_page.dart';
+import 'ui/muthawwif_landing_page.dart';
 import 'ui/package_detail_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/ticket_page.dart';
@@ -145,6 +147,36 @@ class _RootNavigationState extends State<RootNavigation> {
       );
     }
 
+    final user = widget.api.user;
+
+    // RBAC Routing: Arahkan ke landing page sesuai role pengguna
+    if (user != null && user.isAdminRole) {
+      return AdminLandingPage(
+        api: widget.api,
+        onLogout: () {
+          widget.api.logout();
+          setState(() {
+            _hasEnteredApp = false;
+            _hasStarted = true;
+          });
+        },
+      );
+    }
+
+    if (user != null && user.isMuthawwif) {
+      return MuthawwifLandingPage(
+        api: widget.api,
+        onLogout: () {
+          widget.api.logout();
+          setState(() {
+            _hasEnteredApp = false;
+            _hasStarted = true;
+          });
+        },
+      );
+    }
+
+    // Role Jemaah / User biasa (atau Guest) masuk ke landing page user
     return MainScreen(
       api: widget.api,
       onBackToWelcome: () => setState(() {
