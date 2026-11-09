@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.mobile_project_doa_ibu"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
