@@ -20,6 +20,17 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    signingConfigs {
+        create("demo") {
+            // Keystore demo agar SHA-1 build stabil dan bisa didaftarkan sebagai
+            // Android OAuth client. Ganti dengan keystore rilis resmi sebelum publikasi.
+            storeFile = file("doaibu-demo.jks")
+            storePassword = "doaibu2026"
+            keyAlias = "doaibu"
+            keyPassword = "doaibu2026"
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.mobile_project_doa_ibu"
@@ -33,9 +44,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("demo")
         }
     }
 }

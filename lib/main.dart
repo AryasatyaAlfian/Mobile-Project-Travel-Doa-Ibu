@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'core/api_config.dart';
 import 'core/app_colors.dart';
 import 'core/app_theme.dart';
+import 'core/breakpoints.dart';
 import 'models/models.dart';
 import 'services/travel_api.dart';
 import 'ui/admin_shell_page.dart';
@@ -236,19 +237,30 @@ class _MainScreenState extends State<MainScreen> {
       );
     }
 
+    final deviceClass = DeviceScope.of(context);
+    final wide = Breakpoints.isWide(deviceClass);
+    final bodySwitcher = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: KeyedSubtree(
+        key: ValueKey<int>(_currentIndex),
+        child: currentBody,
+      ),
+    );
+
     return Scaffold(
       extendBody: true,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: KeyedSubtree(
-          key: ValueKey<int>(_currentIndex),
-          child: currentBody,
-        ),
-      ),
+      body: wide
+          ? Row(
+              children: [
+                _buildSideRail(deviceClass),
+                Expanded(child: bodySwitcher),
+              ],
+            )
+          : bodySwitcher,
       // Frame 739 — navbar melayang 250 x 57 terkunci di bawah layar, radius 100
-      bottomNavigationBar: SafeArea(
+      bottomNavigationBar: wide ? null : SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 17),
           child: SizedBox(
@@ -299,10 +311,94 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-}
 
-/// Daftar paket dari `GET /api/v1/packages` — data yang sama dengan web.
-/// Dilengkapi fitur pencarian dan filter kategori dengan desain Teal Modern.
+  /// Navigasi samping untuk HP lipat terbuka, tablet, dan desktop.
+  /// Lebar ikon-saja pada kelas medium, dan berlabel pada kelas expanded.
+  Widget _buildSideRail(DeviceClass deviceClass) {
+    final expanded = deviceClass == DeviceClass.expanded;
+    final items = const [
+      ('Beranda', Icons.home_outlined, Icons.home_rounded),
+      ('Tiket', Icons.confirmation_num_outlined, Icons.confirmation_num),
+      ('Peta', Icons.map_outlined, Icons.map_rounded),
+      ('Profil', Icons.person_outline, Icons.person),
+    ];
+
+    return Container(
+      width: expanded ? 212 : 84,
+      color: const Color(0xFFF6F7FB),
+      child: SafeArea(
+        right: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 22),
+            Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: const Color(0xFF19191B), borderRadius: BorderRadius.circular(12)),
+                alignment: Alignment.center,
+                child: const Text('DI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              ),
+            ),
+            const SizedBox(height: 26),
+            for (var i = 0; i < items.length; i++)
+              _buildRailItem(deviceClass, i, items[i].$2, items[i].$3, items[i].$1),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+              child: Text(
+                expanded ? 'PROTEIN · Doa Ibu' : 'DI',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF8A8F98)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRailItem(DeviceClass deviceClass, int index, IconData inactiveIcon, IconData activeIcon, String label) {
+    final selected = _currentIndex == index;
+    final expanded = deviceClass == DeviceClass.expanded;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Material(
+        color: selected ? const Color(0xFFE6ECF7) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _currentIndex = index),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: expanded ? 12 : 0),
+            child: expanded
+                ? Row(
+                    children: [
+                      Icon(selected ? activeIcon : inactiveIcon, size: 24, color: const Color(0xFF19191B)),
+                      const SizedBox(width: 12),
+                      Text(label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                            color: const Color(0xFF19191B),
+                          )),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(selected ? activeIcon : inactiveIcon, size: 26, color: const Color(0xFF19191B)),
+                      const SizedBox(height: 4),
+                      Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF19191B))),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 class PackageListPage extends StatefulWidget {
   const PackageListPage({super.key, required this.api});
 

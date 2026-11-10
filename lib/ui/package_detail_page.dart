@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/breakpoints.dart';
 import '../core/smooth_page_route.dart';
 import '../models/models.dart';
 import '../services/travel_api.dart';
@@ -887,8 +888,8 @@ class _PackageDetailPageState extends State<PackageDetailPage> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: data.features.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: Breakpoints.gridColumns(DeviceScope.of(context)),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
           childAspectRatio: 2.3,
@@ -992,8 +993,8 @@ class _PackageDetailPageState extends State<PackageDetailPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: dynamicFacilities.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: Breakpoints.gridColumns(DeviceScope.of(context)),
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
         childAspectRatio: 2.3,
