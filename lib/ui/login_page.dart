@@ -148,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
         // Akun dipilih tetapi Google tidak mengembalikan token: biasanya karena
         // Android OAuth client (package + SHA-1) belum terdaftar di project yang sama.
         _showError('Login Google belum aktif: akun Google belum terhubung ke aplikasi ini. '
-            'Daftarkan package com.doaibu.app + SHA-1 aplikasi di Google Cloud Console.');
+            'Daftarkan package com.example.mobile_project_doa_ibu + SHA-1 aplikasi di Google Cloud Console.');
         return;
       }
       final user = await widget.api.loginWithGoogle(idToken);
