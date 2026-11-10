@@ -143,7 +143,14 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final idToken = await (widget.googleAuth ?? GoogleSignInAuthService.instance)
           .authenticateIdToken();
-      if (!mounted || idToken == null) return;
+      if (!mounted) return;
+      if (idToken == null) {
+        // Akun dipilih tetapi Google tidak mengembalikan token: biasanya karena
+        // Android OAuth client (package + SHA-1) belum terdaftar di project yang sama.
+        _showError('Login Google belum aktif: akun Google belum terhubung ke aplikasi ini. '
+            'Daftarkan package com.doaibu.app + SHA-1 aplikasi di Google Cloud Console.');
+        return;
+      }
       final user = await widget.api.loginWithGoogle(idToken);
       if (!mounted) return;
 
