@@ -1,0 +1,41 @@
+name: Build APK
+
+# Build APK di cloud (tidak perlu Flutter/Android SDK di komputer sendiri).
+# Jalankan dari tab Actions -> "Build APK" -> Run workflow, lalu unduh artifact.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - name: Ambil dependency
+        run: flutter pub get
+
+      - name: Build APK release (API produksi)
+        run: |
+          flutter build apk --release \
+            --dart-define=API_BASE_URL=https://doaibu.sangcakapuniverse.my.id/api/v1
+
+      - name: Unggah APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

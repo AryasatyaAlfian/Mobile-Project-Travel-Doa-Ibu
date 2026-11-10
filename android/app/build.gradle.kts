@@ -7,10 +7,11 @@ plugins {
 
 android {
     namespace = "com.example.mobile_project_doa_ibu"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
         // Wajib untuk flutter_local_notifications.
@@ -19,6 +20,17 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    signingConfigs {
+        create("demo") {
+            // Keystore demo agar SHA-1 build stabil dan bisa didaftarkan sebagai
+            // Android OAuth client. Ganti dengan keystore rilis resmi sebelum publikasi.
+            storeFile = file("doaibu-demo.jks")
+            storePassword = "doaibu2026"
+            keyAlias = "doaibu"
+            keyPassword = "doaibu2026"
+        }
     }
 
     defaultConfig {
@@ -34,9 +46,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("demo")
         }
     }
 }
@@ -47,4 +57,9 @@ dependencies {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Diperlukan flutter_local_notifications 23 (API notifikasi baru).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
