@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
+import 'package:mobile_project_doa_ibu/core/breakpoints.dart';
 import 'package:mobile_project_doa_ibu/core/storage/app_storage.dart';
 import 'package:mobile_project_doa_ibu/services/travel_api.dart';
 import 'package:mobile_project_doa_ibu/models/models.dart';
@@ -115,7 +116,15 @@ void main() {
           ),
         );
 
-        final expected = entry.value.width > ResponsiveShell.maxContentWidth ? ResponsiveShell.maxContentWidth : entry.value.width;
+        // Lebar kolom konten mengikuti kelas perangkat (560 / 840 / 1280),
+        // bukan satu batas 560 px: HP landscape dan tablet portrait kini
+        // memakai kolom medium yang lebih lebar.
+        final expectedWidth = Breakpoints.contentMaxWidth(
+          Breakpoints.classify(entry.value.width),
+        );
+        final expected = entry.value.width > expectedWidth
+            ? expectedWidth
+            : entry.value.width;
         expect(contentWidth, expected, reason: entry.key);
         expect(mediaWidth, expected, reason: '${entry.key}: MediaQuery ikut lebar konten (dialog/bottom sheet ikut pas)');
       }
