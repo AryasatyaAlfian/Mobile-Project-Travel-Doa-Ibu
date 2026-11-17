@@ -55,14 +55,51 @@ class TravelApi {
     return (json['data'] as List).cast<Map<String, dynamic>>().map(PackageCategory.fromJson).toList();
   }
 
-  Future<Paginated<TravelPackage>> packages({String? category, String? search, bool? featured, int page = 1}) async {
+  Future<Paginated<TravelPackage>> packages({
+    String? category,
+    String? search,
+    bool? featured,
+    int page = 1,
+    int? perPage,
+  }) async {
     final json = await client.get('/packages', query: {
       'category': category,
       'q': search,
       if (featured == true) 'featured': 1,
+      if (perPage != null) 'per_page': perPage,
       'page': page,
     });
     return Paginated.fromJson(json, TravelPackage.fromJson);
+  }
+
+  /// Seluruh paket, bukan hanya halaman pertama.
+  ///
+  /// Backend memaginasi `/packages` (default 12, maks. 50 per halaman) dan
+  /// dokumentasi API mewajibkan klien membaca sampai `meta.last_page`; tanpa
+  /// ini paket ke-13 dan seterusnya tidak pernah tampil di katalog.
+  Future<List<TravelPackage>> allPackages({
+    String? category,
+    String? search,
+    bool? featured,
+    int perPage = 50,
+    int maxPages = 40,
+  }) async {
+    final items = <TravelPackage>[];
+    var page = 1;
+    var lastPage = 1;
+    do {
+      final chunk = await packages(
+        category: category,
+        search: search,
+        featured: featured,
+        page: page,
+        perPage: perPage,
+      );
+      items.addAll(chunk.items);
+      lastPage = chunk.lastPage;
+      page++;
+    } while (page <= lastPage && page <= maxPages);
+    return items;
   }
 
   Future<TravelPackage> package(String slug) async =>

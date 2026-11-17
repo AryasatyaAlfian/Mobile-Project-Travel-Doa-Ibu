@@ -48,13 +48,13 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
   ];
   static const List<double> _chipWidths = [64, 98, 98, 104];
 
-  late Future<Paginated<TravelPackage>> _packagesFuture;
+  late Future<List<TravelPackage>> _packagesFuture;
   int _selectedCategory = 0;
 
   @override
   void initState() {
     super.initState();
-    _packagesFuture = widget.api.packages();
+    _packagesFuture = widget.api.allPackages();
     _initUser();
   }
 
@@ -69,7 +69,7 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
 
   Future<void> _refresh() async {
     setState(() {
-      _packagesFuture = widget.api.packages();
+      _packagesFuture = widget.api.allPackages();
     });
     try {
       await _packagesFuture;
@@ -83,7 +83,11 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
     final keyword = _categoryLabels[_selectedCategory].toLowerCase();
     return all.where((p) {
       final name = p.category?.name.toLowerCase() ?? '';
-      if (keyword == 'umrah') return name.contains('umrah') || name.contains('haji');
+      // Backend memakai "Paket Umrah" dan "Umroh Awal Ramadhan": cocokkan
+      // umrah/umroh/haji, jangan hanya satu ejaan.
+      if (keyword == 'umrah') {
+        return name.contains('umrah') || name.contains('umroh') || name.contains('haji');
+      }
       return name.contains(keyword);
     }).toList();
   }
@@ -108,13 +112,13 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: _bg,
-        body: FutureBuilder<Paginated<TravelPackage>>(
+        body: FutureBuilder<List<TravelPackage>>(
           future: _packagesFuture,
           builder: (context, snapshot) {
             final isLoading =
                 snapshot.connectionState == ConnectionState.waiting;
             final packages =
-                isLoading ? const <TravelPackage>[] : _filter(snapshot.data?.items ?? const []);
+                isLoading ? const <TravelPackage>[] : _filter(snapshot.data ?? const []);
 
             return LayoutBuilder(
               builder: (context, constraints) {

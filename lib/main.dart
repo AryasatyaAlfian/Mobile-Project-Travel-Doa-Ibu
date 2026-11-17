@@ -413,6 +413,12 @@ class _PackageListPageState extends State<PackageListPage> {
   late Future<Paginated<TravelPackage>> _future;
   String? _selectedCategory;
 
+  /// Label chip -> slug kategori backend. Backend menyimpan slug
+  /// ("paket-umrah", "wisata-domestik"), bukan label chip ("Umrah",
+  /// "Domestik"), sehingga mengirim label apa adanya selalu menghasilkan
+  /// daftar kosong.
+  List<PackageCategory>? _categories;
+
   final List<String> _categories = const [
     'Semua',
     'Umrah',
@@ -428,18 +434,44 @@ class _PackageListPageState extends State<PackageListPage> {
   }
 
   void _fetchPackages() {
+    _future = _loadPackages();
+  }
+
+  Future<Paginated<TravelPackage>> _loadPackages() async {
     final query = _searchController.text.trim();
-    _future = widget.api.packages(
+    return widget.api.packages(
       search: query.isEmpty ? null : query,
-      category: (_selectedCategory == null || _selectedCategory == 'Semua')
-          ? null
-          : _selectedCategory!.toLowerCase(),
+      category: await _categorySlug(),
+      perPage: 50,
     );
+  }
+
+  /// Cocokkan label chip dengan nama kategori backend, lalu pakai slug-nya.
+  Future<String?> _categorySlug() async {
+    final label = _selectedCategory;
+    if (label == null || label == 'Semua') return null;
+
+    var categories = _categories;
+    if (categories == null) {
+      try {
+        categories = await widget.api.categories();
+        _categories = categories;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final needle = label.toLowerCase();
+    for (final category in categories!) {
+      final name = category.name.toLowerCase();
+      if (name.contains(needle) || needle.contains(name)) return category.slug;
+    }
+    return null;
   }
 
   Future<void> _refresh() async {
     setState(() => _fetchPackages());
-    await _future.catchError((_) => Paginated<TravelPackage>(items: [], currentPage: 1, lastPage: 1, total: 0));
+    await _future.catchError((_) => Paginated<TravelPackage>(items: const [], currentPage: 1, lastPage: 1, total: 0));
   }
 
   void _onSearch(String value) {
