@@ -1,0 +1,36 @@
+name: Quality Gate
+
+# Analyze + test di cloud untuk setiap push, supaya regresi ketahuan sebelum build APK.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - name: Ambil dependency
+        run: flutter pub get
+
+      - name: Analisis statis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Unit & widget test
+        run: flutter test --reporter expanded

@@ -11,11 +11,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Wajib untuk flutter_local_notifications (desugaring java.time).
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // Wajib untuk flutter_local_notifications.
-        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -52,14 +51,10 @@ android {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Diperlukan flutter_local_notifications 23 (API notifikasi baru).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    // Diperlukan flutter_local_notifications 23 (API notifikasi baru).
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
