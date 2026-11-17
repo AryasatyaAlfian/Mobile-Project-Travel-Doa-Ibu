@@ -121,6 +121,13 @@ void main() {
     });
 
     testWidgets('bottom navbar di MainScreen memiliki tinggi terkunci 57 dan tetap di bagian bawah', (tester) async {
+      // Navbar bawah hanya dipakai di kelas compact (<600 dp). Viewport default
+      // test 800x600 masuk kelas medium, sehingga aplikasi memakai side rail.
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       final mockClient = MockClient((request) async {
         return http.Response(
           jsonEncode({

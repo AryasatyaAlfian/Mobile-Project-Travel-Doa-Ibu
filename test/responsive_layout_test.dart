@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
@@ -34,6 +31,7 @@ import 'package:mobile_project_doa_ibu/ui/login_page.dart';
 import 'package:mobile_project_doa_ibu/ui/register_page.dart';
 import 'package:mobile_project_doa_ibu/ui/widgets/design_frame.dart';
 import 'package:mobile_project_doa_ibu/ui/widgets/responsive_shell.dart';
+import 'support/test_fonts.dart';
 
 /// Ukuran layar (logical px, devicePixelRatio 1) yang harus didukung aplikasi.
 const devices = <String, Size>{
@@ -92,33 +90,9 @@ Future<void> pumpApp(WidgetTester tester, Size size, Widget page) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Font Poppins dari SDK lokal (tanpa jaringan), sama seperti google_auth_pages_test.
-  setUpAll(() async {
-    GoogleFonts.config.allowRuntimeFetching = false;
-    final root = Platform.environment['FLUTTER_ROOT']!;
-    final font = ByteData.sublistView(
-      await File('$root/bin/cache/artifacts/material_fonts/roboto-regular.ttf').readAsBytes(),
-    );
-    const codec = StandardMessageCodec();
-    final manifest = <String, Object>{
-      for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold'])
-        'test-font/Poppins-$weight.ttf': [
-          <String, Object>{'asset': 'test-font/Poppins-$weight.ttf'},
-        ],
-    };
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', (message) async {
-      final name = utf8.decode(message!.buffer.asUint8List(message.offsetInBytes, message.lengthInBytes));
-      if (name == 'AssetManifest.bin') return codec.encodeMessage(manifest);
-      if (name.startsWith('test-font/')) return font;
-      final asset = File(name);
-      if (await asset.exists()) return ByteData.sublistView(await asset.readAsBytes());
-      return null;
-    });
-  });
-  tearDownAll(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', null);
-    GoogleFonts.config.allowRuntimeFetching = true;
-  });
+  // Font lokal tanpa jaringan; aman kalau artefak font SDK tidak tersedia.
+  setUpAll(installTestFonts);
+  tearDownAll(uninstallTestFonts);
   setUp(() {
     AppStorage.instance.clear();
     TravelApi.currentUser = null;

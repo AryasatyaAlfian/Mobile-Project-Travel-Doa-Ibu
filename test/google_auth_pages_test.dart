@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile_project_doa_ibu/core/api_client.dart';
@@ -15,6 +12,7 @@ import 'package:mobile_project_doa_ibu/services/travel_api.dart';
 import 'package:mobile_project_doa_ibu/ui/login_page.dart';
 import 'package:mobile_project_doa_ibu/ui/initial_landing_page.dart';
 import 'package:mobile_project_doa_ibu/ui/register_page.dart';
+import 'support/test_fonts.dart';
 
 class TestGoogleAuth implements GoogleAuthService {
   int calls = 0;
@@ -54,45 +52,9 @@ Future<void> openAuthPage(WidgetTester tester, Widget page) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  // Auth widget tests do not test font rendering or use the network. Supply
-  // the SDK's local test font through a test-only asset channel instead.
-  setUpAll(() async {
-    GoogleFonts.config.allowRuntimeFetching = false;
-    final root = Platform.environment['FLUTTER_ROOT']!;
-    final font = ByteData.sublistView(
-      await File(
-        '$root/bin/cache/artifacts/material_fonts/roboto-regular.ttf',
-      ).readAsBytes(),
-    );
-    const codec = StandardMessageCodec();
-    final manifest = <String, Object>{
-      for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold'])
-        'test-font/Poppins-$weight.ttf': [
-          <String, Object>{'asset': 'test-font/Poppins-$weight.ttf'},
-        ],
-    };
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMessageHandler('flutter/assets', (message) async {
-          final name = utf8.decode(
-            message!.buffer.asUint8List(
-              message.offsetInBytes,
-              message.lengthInBytes,
-            ),
-          );
-          if (name == 'AssetManifest.bin') return codec.encodeMessage(manifest);
-          if (name.startsWith('test-font/')) return font;
-          final asset = File(name);
-          if (await asset.exists()) {
-            return ByteData.sublistView(await asset.readAsBytes());
-          }
-          return null;
-        });
-  });
-  tearDownAll(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMessageHandler('flutter/assets', null);
-    GoogleFonts.config.allowRuntimeFetching = true;
-  });
+  // Font lokal tanpa jaringan; aman kalau artefak font SDK tidak tersedia.
+  setUpAll(installTestFonts);
+  tearDownAll(uninstallTestFonts);
   setUp(() {
     AppStorage.instance.clear();
     TravelApi.currentUser = null;
