@@ -44,8 +44,8 @@ class _BookingFormPageState extends State<BookingFormPage> {
   // Step 2 State
   DepartureGroupItem? _selectedGroup;
   DateTime? _preferredDate;
-  String _selectedRoom = 'Quad';
-  double _roomPrice = 35000000.0;
+  String? _selectedRoom;
+  double _roomPrice = 0.0;
   int _adultCount = 2;
   int _childCount = 0;
 
@@ -66,42 +66,36 @@ class _BookingFormPageState extends State<BookingFormPage> {
     super.initState();
     _expireTime = DateTime.now().add(const Duration(minutes: 30));
 
-    // Dynamic Room Options sesuai starting_price / pricing paket
-    final basePrice = widget.package.startingPrice ?? 35000000.0;
-    double quadPrice = basePrice;
-    double triplePrice = basePrice >= 15000000 ? basePrice + 2500000 : (basePrice * 1.1).roundToDouble();
-    double doublePrice = basePrice >= 15000000 ? basePrice + 5500000 : (basePrice * 1.25).roundToDouble();
-
+    // Dynamic Room Options HANYA dari pricing backend
     final pricing = widget.package.pricing;
-    if (pricing != null) {
-      if (pricing['quad'] is num) quadPrice = (pricing['quad'] as num).toDouble();
-      if (pricing['triple'] is num) triplePrice = (pricing['triple'] as num).toDouble();
-      if (pricing['double'] is num) doublePrice = (pricing['double'] as num).toDouble();
+    final List<Map<String, dynamic>> options = [];
+    if (pricing != null && pricing.isNotEmpty) {
+      for (final entry in pricing.entries) {
+        if (entry.value is num && (entry.value as num) > 0) {
+          final rawKey = entry.key.toLowerCase().trim();
+          final String displayName = rawKey == 'quad'
+              ? 'Quad'
+              : (rawKey == 'triple'
+                  ? 'Triple'
+                  : (rawKey == 'double' ? 'Double' : entry.key));
+          final double price = (entry.value as num).toDouble();
+          final String capacity = rawKey == 'quad'
+              ? '4 org / kamar'
+              : (rawKey == 'triple'
+                  ? '3 org / kamar'
+                  : (rawKey == 'double' ? '2 org / kamar' : ''));
+          options.add({
+            'key': entry.key,
+            'name': displayName,
+            'label': displayName,
+            'capacity': capacity,
+            'price': price,
+            'formatted': 'Rp ${_formatPriceCompact(price)}',
+          });
+        }
+      }
     }
-
-    _roomOptions = [
-      {
-        'name': 'Quad',
-        'label': 'Quad',
-        'capacity': '4 org / kamar',
-        'price': quadPrice,
-        'formatted': 'Rp ${_formatPriceCompact(quadPrice)}',
-      },
-      {
-        'name': 'Triple',
-        'label': 'Triple',
-        'capacity': '3 org / kamar',
-        'price': triplePrice,
-        'formatted': 'Rp ${_formatPriceCompact(triplePrice)}',
-      },
-      {
-        'name': 'Double',
-        'label': 'Double',
-        'capacity': '2 org / kamar',
-        'price': doublePrice,
-        'formatted': 'Rp ${_formatPriceCompact(doublePrice)}',
-      },
-    ];
+    _roomOptions = options;
 
     // Auto-fill dari user login jika tersedia
     final user = TravelApi.currentUser;
@@ -113,18 +107,22 @@ class _BookingFormPageState extends State<BookingFormPage> {
       }
     }
 
-    // Inisialisasi room & group
-    if (widget.initialRoomType != null) {
-      _selectedRoom = widget.initialRoomType!;
-    }
-    if (widget.initialRoomPrice != null) {
-      _roomPrice = widget.initialRoomPrice!;
+    // Inisialisasi room & price
+    if (_roomOptions.isNotEmpty) {
+      if (widget.initialRoomType != null) {
+        final match = _roomOptions.firstWhere(
+          (o) => o['name'] == widget.initialRoomType || o['key'] == widget.initialRoomType,
+          orElse: () => _roomOptions.first,
+        );
+        _selectedRoom = match['name'] as String;
+        _roomPrice = (match['price'] as num).toDouble();
+      } else {
+        _selectedRoom = _roomOptions.first['name'] as String;
+        _roomPrice = (_roomOptions.first['price'] as num).toDouble();
+      }
     } else {
-      final match = _roomOptions.firstWhere(
-        (o) => o['name'] == _selectedRoom,
-        orElse: () => _roomOptions.first,
-      );
-      _roomPrice = (match['price'] as num).toDouble();
+      _selectedRoom = null;
+      _roomPrice = widget.package.startingPrice ?? 0.0;
     }
 
     if (widget.initialSelectedGroup != null) {
@@ -284,7 +282,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
     });
 
     try {
-      final specialNotes = 'Tipe Kamar: $_selectedRoom. NIK: ${_nikController.text.trim()}, '
+      final roomText = _selectedRoom != null ? 'Tipe Kamar: $_selectedRoom. ' : '';
+      final specialNotes = '$roomText'
+          'NIK: ${_nikController.text.trim()}, '
           'Paspor: ${_passportController.text.trim()}, '
           'Tgl Lahir: ${_birthDate != null ? "${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}" : "-"}, '
           'Opsi Bayar: ${_isDpSelected ? "Bayar DP" : "Lunas"}.';
@@ -293,6 +293,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
         packageCategoryId: widget.package.category?.id ?? 1,
         packageId: widget.package.id,
         departureGroupId: _selectedGroup?.id,
+        roomType: _selectedRoom,
         customerName: _nameController.text.trim(),
         customerWhatsapp: _whatsappController.text.trim(),
         customerEmail: _emailController.text.trim(),
@@ -305,7 +306,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
       final message = await widget.api.submitBooking(request);
 
-      // Tambahkan tiket ke TicketService persisten dengan rincian penerbangan riil
+      // Tambahkan tiket ke TicketService persisten dengan rincian penerbangan & hotel grup riil
       final date = _selectedGroup?.departureDate ?? _preferredDate;
       final departureDateStr = date != null
           ? '${date.day} ${_monthName(date.month)} ${date.year}'
@@ -315,9 +316,16 @@ class _BookingFormPageState extends State<BookingFormPage> {
         packageName: widget.package.name,
         customerName: _nameController.text.trim(),
         imageUrl: widget.package.image,
-        airline: widget.package.airline,
+        airline: (_selectedGroup?.airlines.isNotEmpty == true)
+            ? _selectedGroup!.airlines.first
+            : widget.package.airline,
+        airlines: _selectedGroup?.airlines ?? (widget.package.airline != null ? [widget.package.airline!] : const []),
         departureSchedule: departureDateStr,
         status: 'confirmed',
+        hotels: _selectedGroup?.hotels ?? const [],
+        hotelsConfirmed: _selectedGroup?.hotelsConfirmed,
+        airlinesConfirmed: _selectedGroup?.airlinesConfirmed,
+        accommodationUpdatedAt: _selectedGroup?.accommodationUpdatedAt,
       );
 
       if (!mounted) return;
@@ -327,8 +335,12 @@ class _BookingFormPageState extends State<BookingFormPage> {
       if (!mounted) return;
       var err = e.message;
       if (e.errors.isNotEmpty) {
-        final firstList = e.errors.values.first;
-        if (firstList.isNotEmpty) err = firstList.first;
+        if (e.errors.containsKey('room_type') && e.errors['room_type']!.isNotEmpty) {
+          err = e.errors['room_type']!.first;
+        } else {
+          final firstList = e.errors.values.first;
+          if (firstList.isNotEmpty) err = firstList.first;
+        }
       }
       setState(() => _inlineError = err);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -789,11 +801,16 @@ class _BookingFormPageState extends State<BookingFormPage> {
                         color: Color(0xFF1F1F1F),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${widget.package.duration ?? "15 Hari"} · ${widget.package.airline ?? "Saudia Airlines"}',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF72787D)),
-                    ),
+                    if (widget.package.duration != null || widget.package.airline != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        [
+                          if (widget.package.duration != null && widget.package.duration!.isNotEmpty) widget.package.duration!,
+                          if (widget.package.airline != null && widget.package.airline!.isNotEmpty) widget.package.airline!,
+                        ].join(' · '),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF72787D)),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -835,67 +852,101 @@ class _BookingFormPageState extends State<BookingFormPage> {
         const SizedBox(height: 20),
 
         // Tipe Kamar
-        const Text(
-          'Tipe Kamar',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1F1F1F)),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: _roomOptions.map((opt) {
-            final isSelected = _selectedRoom == opt['name'];
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedRoom = opt['name'] as String;
-                      _roomPrice = (opt['price'] as num).toDouble();
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFFFF7EB) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFFE8B972) : const Color(0xFFE2E8F0),
-                        width: isSelected ? 1.5 : 1.0,
+        if (_roomOptions.isNotEmpty) ...[
+          const Text(
+            'Tipe Kamar',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1F1F1F)),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: _roomOptions.map((opt) {
+              final isSelected = _selectedRoom == opt['name'] || _selectedRoom == opt['key'];
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedRoom = opt['name'] as String;
+                        _roomPrice = (opt['price'] as num).toDouble();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFFFF7EB) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFFE8B972) : const Color(0xFFE2E8F0),
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          opt['label'] as String,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? const Color(0xFF1F1F1F) : const Color(0xFF4A4A4A),
+                      child: Column(
+                        children: [
+                          Text(
+                            opt['label'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? const Color(0xFF1F1F1F) : const Color(0xFF4A4A4A),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          opt['formatted'] as String,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFB57F26),
+                          const SizedBox(height: 4),
+                          Text(
+                            opt['formatted'] as String,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFB57F26),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          opt['capacity'] as String,
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF72787D)),
-                        ),
-                      ],
+                          if ((opt['capacity'] as String).isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              opt['capacity'] as String,
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF72787D)),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Harga Paket', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1F1F1F))),
+                    SizedBox(height: 2),
+                    Text('Sesuai program paket', style: TextStyle(fontSize: 11, color: Color(0xFF72787D))),
+                  ],
+                ),
+                Text(
+                  widget.package.startingPrice != null
+                      ? widget.package.formattedPrice
+                      : 'Hubungi Kami',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFFB57F26)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
         const SizedBox(height: 20),
 
         // Jumlah Jemaah
@@ -989,7 +1040,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Paket $_selectedRoom × $_totalParticipants jemaah',
+                    'Paket ${_selectedRoom != null ? "$_selectedRoom " : ""}× $_totalParticipants jemaah',
                     style: const TextStyle(fontSize: 13, color: Color(0xFF555B60)),
                   ),
                   Text(
@@ -1040,61 +1091,176 @@ class _BookingFormPageState extends State<BookingFormPage> {
   Widget _buildStep2ScheduleOptions() {
     final groups = widget.package.departureGroups;
     if (groups.isNotEmpty) {
-      return Row(
-        children: groups.take(3).map((grp) {
-          final isSelected = _selectedGroup?.id == grp.id;
-          final isFull = grp.isFull;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: groups.take(3).map((grp) {
+              final isSelected = _selectedGroup?.id == grp.id;
+              final isFull = grp.isFull;
 
-          final dateStr = grp.departureDate != null
-              ? '${grp.departureDate!.day} ${_monthName(grp.departureDate!.month)} ${grp.departureDate!.year}'
-              : grp.name;
+              final dateStr = grp.departureDate != null
+                  ? '${grp.departureDate!.day} ${_monthName(grp.departureDate!.month)} ${grp.departureDate!.year}'
+                  : grp.name;
 
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: InkWell(
-                onTap: isFull ? null : () => setState(() => _selectedGroup = grp),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: isFull
-                        ? const Color(0xFFF1F1F1)
-                        : (isSelected ? const Color(0xFFFFF7EB) : Colors.white),
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: isFull ? null : () => setState(() => _selectedGroup = grp),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isFull
-                          ? const Color(0xFFE0E0E0)
-                          : (isSelected ? const Color(0xFFE8B972) : const Color(0xFFE2E8F0)),
-                      width: isSelected ? 1.5 : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isFull
+                            ? const Color(0xFFF1F1F1)
+                            : (isSelected ? const Color(0xFFFFF7EB) : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isFull
+                              ? const Color(0xFFE0E0E0)
+                              : (isSelected ? const Color(0xFFE8B972) : const Color(0xFFE2E8F0)),
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isFull ? const Color(0xFFA0A6AC) : const Color(0xFF1F1F1F),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isFull
+                                ? 'Penuh'
+                                : (grp.remainingQuota != null
+                                    ? 'Sisa ${grp.remainingQuota} kursi'
+                                    : 'Tersedia'),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: isFull ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        dateStr,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isFull ? const Color(0xFFA0A6AC) : const Color(0xFF1F1F1F),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isFull ? 'Penuh' : 'Sisa ${grp.remainingQuota ?? 10} kursi',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isFull ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
+              );
+            }).toList(),
+          ),
+          if (_selectedGroup != null &&
+              (_selectedGroup!.airlines.isNotEmpty || _selectedGroup!.hotels.isNotEmpty)) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_selectedGroup!.airlines.isNotEmpty) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.flight_takeoff_rounded, size: 16, color: Color(0xFF1E40AF)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _selectedGroup!.airlines.join(', '),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F1F1F),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _selectedGroup!.airlinesConfirmed
+                                ? const Color(0xFFDCFCE7)
+                                : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _selectedGroup!.airlinesConfirmed ? 'Sudah pasti' : 'Rencana (atau setaraf)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: _selectedGroup!.airlinesConfirmed
+                                  ? const Color(0xFF15803D)
+                                  : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_selectedGroup!.hotels.isNotEmpty) const Divider(height: 14),
+                  ],
+                  if (_selectedGroup!.hotels.isNotEmpty) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.apartment_rounded, size: 16, color: Color(0xFFB57F26)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _selectedGroup!.hotels.map((h) => h.text).join(' · '),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F1F1F),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _selectedGroup!.hotelsConfirmed
+                                ? const Color(0xFFDCFCE7)
+                                : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _selectedGroup!.hotelsConfirmed ? 'Sudah pasti' : 'Rencana (atau setaraf)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: _selectedGroup!.hotelsConfirmed
+                                  ? const Color(0xFF15803D)
+                                  : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-          );
-        }).toList(),
+          ],
+        ],
       );
     }
 

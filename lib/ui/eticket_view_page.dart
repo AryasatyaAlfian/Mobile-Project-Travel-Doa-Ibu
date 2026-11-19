@@ -276,7 +276,7 @@ class ETicketViewPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      ticket.airline,
+                      ticket.airlines.isNotEmpty ? ticket.airlines.join(', ') : ticket.airline,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,

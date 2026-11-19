@@ -55,14 +55,54 @@ class TravelApi {
     return (json['data'] as List).cast<Map<String, dynamic>>().map(PackageCategory.fromJson).toList();
   }
 
-  Future<Paginated<TravelPackage>> packages({String? category, String? search, bool? featured, int page = 1}) async {
+  Future<Paginated<TravelPackage>> packages({
+    String? category,
+    String? search,
+    bool? featured,
+    int page = 1,
+    int? perPage = 50,
+  }) async {
     final json = await client.get('/packages', query: {
-      'category': category,
-      'q': search,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (search != null && search.isNotEmpty) 'q': search,
       if (featured == true) 'featured': 1,
       'page': page,
+      'per_page': ?perPage,
     });
     return Paginated.fromJson(json, TravelPackage.fromJson);
+  }
+
+  /// Memuat seluruh halaman paket mengikuti meta.last_page
+  Future<Paginated<TravelPackage>> fetchAllPackages({
+    String? category,
+    String? search,
+    bool? featured,
+    int perPage = 50,
+  }) async {
+    final firstPage = await packages(
+      category: category,
+      search: search,
+      featured: featured,
+      page: 1,
+      perPage: perPage,
+    );
+    final allItems = List<TravelPackage>.from(firstPage.items);
+    for (int p = 2; p <= firstPage.lastPage; p++) {
+      final nextPage = await packages(
+        category: category,
+        search: search,
+        featured: featured,
+        page: p,
+        perPage: perPage,
+      );
+      allItems.addAll(nextPage.items);
+    }
+    return Paginated<TravelPackage>(
+      items: allItems,
+      currentPage: 1,
+      lastPage: 1,
+      total: allItems.length,
+    );
   }
 
   Future<TravelPackage> package(String slug) async =>

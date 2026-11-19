@@ -48,7 +48,7 @@ class _InitialLandingPageState extends State<InitialLandingPage> {
   @override
   void initState() {
     super.initState();
-    _packagesFuture = widget.api?.packages();
+    _packagesFuture = widget.api?.fetchAllPackages();
   }
 
   PageRouteBuilder<void> _createRoute(Widget page) {

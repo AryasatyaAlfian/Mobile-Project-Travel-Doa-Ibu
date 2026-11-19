@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/smooth_page_route.dart';
+import '../core/storage/app_storage.dart';
+import '../models/models.dart';
 import '../services/travel_api.dart';
 import 'profile_account_info_page.dart';
 import 'profile_digital_payment_page.dart';
@@ -35,6 +37,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = false;
+  Map<String, dynamic>? _profileData;
 
   static const Color _gold = Color(0xFFECC485);
   static const Color _bg = Color(0xFFFFF8EC);
@@ -51,9 +54,48 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!silent) setState(() => _isLoading = true);
     try {
       await widget.api.me();
-      await widget.api.getProfile();
+      final data = await widget.api.getProfile();
+      if (mounted) {
+        setState(() {
+          _profileData = data;
+        });
+      }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  DepartureGroupItem? get _departureGroup {
+    final dg = _profileData?['departure_group'];
+    if (dg is Map<String, dynamic>) {
+      try {
+        return DepartureGroupItem.fromJson(dg);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  bool get _isAccommodationUpdated {
+    final group = _departureGroup;
+    if (group == null || group.accommodationUpdatedAt == null) return false;
+    final seen = AppStorage.instance.get('profile_seen_acc_${group.id}');
+    if (seen == null || seen.isEmpty) return true;
+    try {
+      final updatedDt = DateTime.parse(group.accommodationUpdatedAt!);
+      final seenDt = DateTime.parse(seen);
+      return updatedDt.isAfter(seenDt);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _markAccommodationSeen() {
+    final group = _departureGroup;
+    if (group != null && group.accommodationUpdatedAt != null) {
+      AppStorage.instance.set('profile_seen_acc_${group.id}', DateTime.now().toIso8601String());
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -307,6 +349,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Seksi Akomodasi Rombongan (Khusus Jemaah bila memiliki data grup)
+                      if (!isStaff && _departureGroup != null) ...[
+                        _buildGroupAccommodationCard(_departureGroup!),
+                        const SizedBox(height: 16),
+                      ],
+
                       // 2. Seksi Akun (Jelas Berada di Bawah Header Ka'bah & Kartu Profil)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -529,6 +577,174 @@ class _ProfilePageState extends State<ProfilePage> {
         const SizedBox(height: 10),
         const SkeletonBox(height: 56, borderRadius: 18),
       ],
+    );
+  }
+
+  Widget _buildGroupAccommodationCard(DepartureGroupItem group) {
+    final hasAirlines = group.airlines.isNotEmpty;
+    final hasHotels = group.hotels.isNotEmpty;
+    if (!hasAirlines && !hasHotels) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2D6C3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _gold.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.flight_takeoff_rounded, size: 18, color: _ink),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Akomodasi Rombongan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _ink,
+                      ),
+                    ),
+                    if (group.name.isNotEmpty)
+                      Text(
+                        group.name,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: _muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_isAccommodationUpdated)
+                GestureDetector(
+                  onTap: _markAccommodationSeen,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF86EFAC)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.sync_rounded, size: 12, color: Color(0xFF166534)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Diperbarui',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF166534),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (hasAirlines) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.airlines_rounded, size: 14, color: _muted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Maskapai',
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: _ink),
+                    ),
+                  ],
+                ),
+                _buildStatusChip(group.airlinesConfirmed),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              group.airlines.join(', '),
+              style: GoogleFonts.poppins(fontSize: 12, color: _ink),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (hasHotels) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.hotel_rounded, size: 14, color: _muted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Hotel',
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: _ink),
+                    ),
+                  ],
+                ),
+                _buildStatusChip(group.hotelsConfirmed),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ...group.hotels.map(
+              (h) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  h.items.isNotEmpty ? '${h.text}: ${h.items.join(", ")}' : h.text,
+                  style: GoogleFonts.poppins(fontSize: 12, color: _ink),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(bool isConfirmed) {
+    final bg = isConfirmed ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
+    final border = isConfirmed ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A);
+    final text = isConfirmed ? const Color(0xFF166534) : const Color(0xFF92400E);
+    final label = isConfirmed ? 'Sudah pasti' : 'Rencana (atau setaraf)';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: text,
+        ),
+      ),
     );
   }
 }

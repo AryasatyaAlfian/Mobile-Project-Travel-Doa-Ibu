@@ -47,6 +47,13 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
     'Internasional',
   ];
   static const List<double> _chipWidths = [64, 98, 98, 104];
+  static const List<String?> _defaultCategorySlugs = [
+    null,
+    'paket-umrah',
+    'wisata-domestik',
+    'wisata-internasional',
+  ];
+  List<String?> _categorySlugs = List<String?>.from(_defaultCategorySlugs);
 
   late Future<Paginated<TravelPackage>> _packagesFuture;
   int _selectedCategory = 0;
@@ -54,8 +61,41 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
   @override
   void initState() {
     super.initState();
-    _packagesFuture = widget.api.packages();
+    _loadPackages();
+    _initCategories();
     _initUser();
+  }
+
+  void _loadPackages() {
+    final slug = _selectedCategory < _categorySlugs.length ? _categorySlugs[_selectedCategory] : null;
+    _packagesFuture = widget.api.fetchAllPackages(category: slug);
+  }
+
+  void _initCategories() {
+    widget.api.categories().then((cats) {
+      if (!mounted || cats.isEmpty) return;
+      String? umrahSlug;
+      String? domestikSlug;
+      String? internasionalSlug;
+      for (final c in cats) {
+        final lower = c.name.toLowerCase();
+        if (lower.contains('umrah') || lower.contains('haji')) {
+          umrahSlug = c.slug;
+        } else if (lower.contains('domestik')) {
+          domestikSlug = c.slug;
+        } else if (lower.contains('internasional')) {
+          internasionalSlug = c.slug;
+        }
+      }
+      setState(() {
+        _categorySlugs = [
+          null,
+          umrahSlug ?? 'paket-umrah',
+          domestikSlug ?? 'wisata-domestik',
+          internasionalSlug ?? 'wisata-internasional',
+        ];
+      });
+    }).catchError((_) => null);
   }
 
   void _initUser() {
@@ -69,23 +109,11 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
 
   Future<void> _refresh() async {
     setState(() {
-      _packagesFuture = widget.api.packages();
+      _loadPackages();
     });
     try {
       await _packagesFuture;
     } catch (_) {}
-  }
-
-  /// Saring berdasarkan nama kategori dari backend.
-  List<TravelPackage> _filter(List<TravelPackage> all) {
-    if (_selectedCategory == 0) return all;
-
-    final keyword = _categoryLabels[_selectedCategory].toLowerCase();
-    return all.where((p) {
-      final name = p.category?.name.toLowerCase() ?? '';
-      if (keyword == 'umrah') return name.contains('umrah') || name.contains('haji');
-      return name.contains(keyword);
-    }).toList();
   }
 
   void _openPackage(TravelPackage package) {
@@ -114,7 +142,7 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
             final isLoading =
                 snapshot.connectionState == ConnectionState.waiting;
             final packages =
-                isLoading ? const <TravelPackage>[] : _filter(snapshot.data?.items ?? const []);
+                isLoading ? const <TravelPackage>[] : (snapshot.data?.items ?? const <TravelPackage>[]);
 
             return LayoutBuilder(
               builder: (context, constraints) {
@@ -309,7 +337,14 @@ class _HomepageJemaahState extends State<HomepageJemaah> {
     final bool selected = index == _selectedCategory;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _selectedCategory = index),
+      onTap: () {
+        if (_selectedCategory != index) {
+          setState(() {
+            _selectedCategory = index;
+            _loadPackages();
+          });
+        }
+      },
       child: Container(
         width: _chipWidths[index],
         height: 42,
