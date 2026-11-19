@@ -30,8 +30,10 @@ class GoogleSignInAuthService implements GoogleAuthService {
   static final GoogleAuthService instance = GoogleSignInAuthService(
     sdk: _GoogleSignInSdk(),
   );
-  static const serverClientId =
-      '782459815456-lh9l70kc3eqoblskg4gc67c6t6kg27dt.apps.googleusercontent.com';
+  static const serverClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '782459815456-lh9l70kc3eqoblskg4gc67c6t6kg27dt.apps.googleusercontent.com',
+  );
 
   final GoogleAuthSdk _sdk;
   Future<void>? _initialization;
