@@ -1,3 +1,5 @@
+import 'models.dart';
+
 /// Model data untuk pesanan tiket jemaah.
 /// Selaras dengan skema database backend Laravel: status 'new', 'booked', 'completed', 'cancelled'.
 class TicketOrder {
@@ -7,6 +9,7 @@ class TicketOrder {
     required this.packageName,
     required this.status,
     required this.airline,
+    this.airlines = const [],
     required this.flightNumber,
     required this.departureSchedule,
     required this.flightRoute,
@@ -20,6 +23,10 @@ class TicketOrder {
     this.checkedBaggage = 'Bagasi 20 kg',
     this.seatInfo = 'Kursi ... Disesuaikan',
     required this.imageUrl,
+    this.hotels = const [],
+    this.hotelsConfirmed,
+    this.airlinesConfirmed,
+    this.accommodationUpdatedAt,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -35,6 +42,7 @@ class TicketOrder {
   final String status;
 
   final String airline;
+  final List<String> airlines;
   final String flightNumber;
   final String departureSchedule;
   final String flightRoute;
@@ -49,6 +57,10 @@ class TicketOrder {
   final String checkedBaggage;
   final String seatInfo;
   final String imageUrl;
+  final List<OutlineItem> hotels;
+  final bool? hotelsConfirmed;
+  final bool? airlinesConfirmed;
+  final String? accommodationUpdatedAt;
   final DateTime createdAt;
 
   bool get isPendingPayment => status == 'new' || status == 'pending';
@@ -110,6 +122,7 @@ class TicketOrder {
     String? packageName,
     String? status,
     String? airline,
+    List<String>? airlines,
     String? flightNumber,
     String? departureSchedule,
     String? flightRoute,
@@ -123,6 +136,10 @@ class TicketOrder {
     String? checkedBaggage,
     String? seatInfo,
     String? imageUrl,
+    List<OutlineItem>? hotels,
+    bool? hotelsConfirmed,
+    bool? airlinesConfirmed,
+    String? accommodationUpdatedAt,
     DateTime? createdAt,
   }) {
     return TicketOrder(
@@ -131,6 +148,7 @@ class TicketOrder {
       packageName: packageName ?? this.packageName,
       status: status ?? this.status,
       airline: airline ?? this.airline,
+      airlines: airlines ?? this.airlines,
       flightNumber: flightNumber ?? this.flightNumber,
       departureSchedule: departureSchedule ?? this.departureSchedule,
       flightRoute: flightRoute ?? this.flightRoute,
@@ -144,6 +162,10 @@ class TicketOrder {
       checkedBaggage: checkedBaggage ?? this.checkedBaggage,
       seatInfo: seatInfo ?? this.seatInfo,
       imageUrl: imageUrl ?? this.imageUrl,
+      hotels: hotels ?? this.hotels,
+      hotelsConfirmed: hotelsConfirmed ?? this.hotelsConfirmed,
+      airlinesConfirmed: airlinesConfirmed ?? this.airlinesConfirmed,
+      accommodationUpdatedAt: accommodationUpdatedAt ?? this.accommodationUpdatedAt,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -154,6 +176,7 @@ class TicketOrder {
         'package_name': packageName,
         'status': status,
         'airline': airline,
+        if (airlines.isNotEmpty) 'airlines': airlines,
         'flight_number': flightNumber,
         'departure_schedule': departureSchedule,
         'flight_route': flightRoute,
@@ -167,29 +190,51 @@ class TicketOrder {
         'checked_baggage': checkedBaggage,
         'seat_info': seatInfo,
         'image_url': imageUrl,
+        if (hotels.isNotEmpty) 'hotels': hotels.map((h) => h.toJson()).toList(),
+        if (hotelsConfirmed != null) 'hotels_confirmed': hotelsConfirmed,
+        if (airlinesConfirmed != null) 'airlines_confirmed': airlinesConfirmed,
+        if (accommodationUpdatedAt != null) 'accommodation_updated_at': accommodationUpdatedAt,
         'created_at': createdAt.toIso8601String(),
       };
 
-  factory TicketOrder.fromJson(Map<String, dynamic> json) => TicketOrder(
-        id: json['id'] as String,
-        route: json['route'] as String,
-        packageName: json['package_name'] as String,
-        status: json['status'] as String? ?? 'new',
-        airline: json['airline'] as String? ?? 'Emirates',
-        flightNumber: json['flight_number'] as String? ?? 'EM 123',
-        departureSchedule: json['departure_schedule'] as String? ?? '',
-        flightRoute: json['flight_route'] as String? ?? '',
-        departureAirport: json['departure_airport'] as String? ?? '',
-        arrivalAirport: json['arrival_airport'] as String? ?? '',
-        arrivalSchedule: json['arrival_schedule'] as String? ?? '',
-        flightDuration: json['flight_duration'] as String? ?? 'Langsung',
-        passengerName: json['passenger_name'] as String? ?? 'Jemaah',
-        passengerType: json['passenger_type'] as String? ?? 'Dewasa',
-        cabinBaggage: json['cabin_baggage'] as String? ?? 'Kabin 7 kg',
-        checkedBaggage: json['checked_baggage'] as String? ?? 'Bagasi 20 kg',
-        seatInfo: json['seat_info'] as String? ?? 'Kursi ... Disesuaikan',
-        imageUrl: json['image_url'] as String? ?? '',
-        createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      );
+  factory TicketOrder.fromJson(Map<String, dynamic> json) {
+    final rawAirlines = (json['airlines'] as List?)?.map((e) => '$e').toList() ?? const <String>[];
+    final singleAirline = json['airline'] as String?;
+    final resolvedAirline = singleAirline ?? (rawAirlines.isNotEmpty ? rawAirlines.first : 'Emirates');
+    final List<String> effectiveAirlines = rawAirlines.isNotEmpty
+        ? rawAirlines
+        : (singleAirline != null && singleAirline.isNotEmpty ? [singleAirline] : const <String>[]);
+
+    return TicketOrder(
+      id: json['id'] as String,
+      route: json['route'] as String? ?? 'Jakarta - Jeddah',
+      packageName: json['package_name'] as String? ?? 'Paket Wisata',
+      status: json['status'] as String? ?? 'new',
+      airline: resolvedAirline,
+      airlines: effectiveAirlines,
+      flightNumber: json['flight_number'] as String? ?? 'EM 123',
+      departureSchedule: json['departure_schedule'] as String? ?? '',
+      flightRoute: json['flight_route'] as String? ?? '',
+      departureAirport: json['departure_airport'] as String? ?? '',
+      arrivalAirport: json['arrival_airport'] as String? ?? '',
+      arrivalSchedule: json['arrival_schedule'] as String? ?? '',
+      flightDuration: json['flight_duration'] as String? ?? 'Langsung',
+      passengerName: json['passenger_name'] as String? ?? 'Jemaah',
+      passengerType: json['passenger_type'] as String? ?? 'Dewasa',
+      cabinBaggage: json['cabin_baggage'] as String? ?? 'Kabin 7 kg',
+      checkedBaggage: json['checked_baggage'] as String? ?? 'Bagasi 20 kg',
+      seatInfo: json['seat_info'] as String? ?? 'Kursi ... Disesuaikan',
+      imageUrl: json['image_url'] as String? ?? '',
+      hotels: (json['hotels'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(OutlineItem.fromJson)
+              .toList() ??
+          const [],
+      hotelsConfirmed: json['hotels_confirmed'] as bool?,
+      airlinesConfirmed: json['airlines_confirmed'] as bool?,
+      accommodationUpdatedAt: json['accommodation_updated_at'] as String?,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+    );
+  }
 }
 

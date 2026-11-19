@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/smooth_page_route.dart';
+import '../core/storage/app_storage.dart';
 import '../models/ticket_order.dart';
 import '../services/ticket_service.dart';
 import 'eticket_view_page.dart';
@@ -80,7 +81,27 @@ class _TicketPageState extends State<TicketPage> {
       _selectedTicket = TicketService.instance.getTicketById(widget.initialTicketId!);
       if (_selectedTicket != null) {
         _openedFromTicketPage = true;
+        _markAccommodationSeen(_selectedTicket!);
       }
+    }
+  }
+
+  bool _isAccommodationUpdated(TicketOrder ticket) {
+    if (ticket.accommodationUpdatedAt == null) return false;
+    final seen = AppStorage.instance.get('ticket_seen_acc_${ticket.id}');
+    if (seen == null || seen.isEmpty) return true;
+    try {
+      final updatedDt = DateTime.parse(ticket.accommodationUpdatedAt!);
+      final seenDt = DateTime.parse(seen);
+      return updatedDt.isAfter(seenDt);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _markAccommodationSeen(TicketOrder ticket) {
+    if (ticket.accommodationUpdatedAt != null) {
+      AppStorage.instance.set('ticket_seen_acc_${ticket.id}', DateTime.now().toIso8601String());
     }
   }
 
@@ -115,6 +136,7 @@ class _TicketPageState extends State<TicketPage> {
   }
 
   void _openDetailOrder(TicketOrder ticket) {
+    _markAccommodationSeen(ticket);
     setState(() {
       _selectedTicket = ticket;
       _openedFromTicketPage = true;
@@ -871,6 +893,7 @@ class _TicketPageState extends State<TicketPage> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () {
+            _markAccommodationSeen(ticket);
             setState(() {
               _selectedTicket = ticket;
               _openedFromTicketPage = false;
@@ -905,7 +928,16 @@ class _TicketPageState extends State<TicketPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _buildStatusBadge(ticket),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildStatusBadge(ticket),
+                        if (_isAccommodationUpdated(ticket)) ...[
+                          const SizedBox(width: 6),
+                          _buildUpdatedBadge(),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -937,7 +969,7 @@ class _TicketPageState extends State<TicketPage> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${ticket.airline} • ${ticket.flightNumber}',
+                            '${ticket.airlines.isNotEmpty ? ticket.airlines.join(", ") : ticket.airline} • ${ticket.flightNumber}',
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               color: Colors.grey.shade600,
@@ -1344,13 +1376,37 @@ class _TicketPageState extends State<TicketPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      ticket.airline,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFFD71921),
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            ticket.airlines.isNotEmpty ? ticket.airlines.join(', ') : ticket.airline,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFD71921),
+                            ),
+                          ),
+                        ),
+                        if (ticket.airlinesConfirmed != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: ticket.airlinesConfirmed! ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              ticket.airlinesConfirmed! ? 'Sudah pasti' : 'Rencana (atau setaraf)',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: ticket.airlinesConfirmed! ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1435,6 +1491,16 @@ class _TicketPageState extends State<TicketPage> {
               _buildDetailRow('Jumlah Peserta', '1 ${ticket.passengerType}'),
               const Divider(height: 20, thickness: 0.8),
               _buildDetailRow('Tipe Kamar', ticket.roomType),
+              if (ticket.hotels.isNotEmpty) ...[
+                const Divider(height: 20, thickness: 0.8),
+                _buildDetailRow(
+                  'Hotel',
+                  ticket.hotels.map((h) => h.text).join(' · ') +
+                      (ticket.hotelsConfirmed != null
+                          ? (ticket.hotelsConfirmed! ? ' (Sudah pasti)' : ' (Rencana/setaraf)')
+                          : ''),
+                ),
+              ],
             ],
           ),
         ),
@@ -1731,7 +1797,15 @@ class _TicketPageState extends State<TicketPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Badge Status
-                          _buildStatusBadge(ticket),
+                          Row(
+                            children: [
+                              _buildStatusBadge(ticket),
+                              if (_isAccommodationUpdated(ticket)) ...[
+                                const SizedBox(width: 6),
+                                _buildUpdatedBadge(),
+                              ],
+                            ],
+                          ),
                           const SizedBox(height: 5),
                           Text(
                             ticket.route,
@@ -1790,7 +1864,7 @@ class _TicketPageState extends State<TicketPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            ticket.airline,
+                            ticket.airlines.isNotEmpty ? ticket.airlines.join(', ') : ticket.airline,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -1873,6 +1947,32 @@ class _TicketPageState extends State<TicketPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildUpdatedBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDCFCE7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync_rounded, size: 12, color: Color(0xFF166534)),
+          const SizedBox(width: 4),
+          Text(
+            'Diperbarui',
+            style: GoogleFonts.poppins(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF166534),
+            ),
+          ),
+        ],
       ),
     );
   }

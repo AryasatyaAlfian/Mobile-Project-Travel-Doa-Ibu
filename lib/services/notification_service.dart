@@ -30,7 +30,7 @@ class NotificationService {
 
     try {
       await _plugin.initialize(
-        settings: initSettings,
+        initSettings,
         onDidReceiveNotificationResponse: (response) {
           onNotificationTapped?.call(response.payload);
         },
@@ -81,10 +81,10 @@ class NotificationService {
 
     try {
       await _plugin.show(
-        id: id,
-        title: title,
-        body: body,
-        notificationDetails: notificationDetails,
+        id,
+        title,
+        body,
+        notificationDetails,
         payload: payload,
       );
     } catch (_) {

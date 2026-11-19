@@ -83,6 +83,11 @@ class MockApiClient extends ApiClient {
           'remaining_quota': 12,
           'airline': 'Saudia Airlines',
           'category': {'id': 1, 'name': 'Paket Umrah', 'slug': 'umrah'},
+          'pricing': {
+            'quad': 35000000,
+            'triple': 37500000,
+            'double': 40500000,
+          },
           'departure_groups': [
             {
               'id': 101,
@@ -126,6 +131,11 @@ void main() {
       quota: 30,
       remainingQuota: 12,
       category: PackageCategory(id: 1, name: 'Paket Umrah', slug: 'umrah'),
+      pricing: const {
+        'quad': 35000000,
+        'triple': 37500000,
+        'double': 40500000,
+      },
       departureGroups: [
         DepartureGroupItem(
           id: 101,

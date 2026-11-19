@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../core/storage/app_storage.dart';
+import '../models/models.dart';
 import '../models/ticket_order.dart';
 
 /// Service lokal untuk tiket jemaah yang selaras dengan data backend Laravel.
@@ -205,6 +206,7 @@ class TicketService {
     required String? imageUrl,
     String status = 'new',
     String? airline,
+    List<String>? airlines,
     String? flightNumber,
     String? departureSchedule,
     String? route,
@@ -212,6 +214,10 @@ class TicketService {
     String? departureAirport,
     String? arrivalAirport,
     String? passengerType,
+    List<OutlineItem>? hotels,
+    bool? hotelsConfirmed,
+    bool? airlinesConfirmed,
+    String? accommodationUpdatedAt,
   }) async {
     final newId = '${DateTime.now().millisecondsSinceEpoch % 1000000}';
     final resolvedRoute = route ??
@@ -228,12 +234,16 @@ class TicketService {
                 ? 'Jakarta (CGK) → Tokyo (TYOA)'
                 : 'Jakarta (CGK) → Destinasi'));
 
+    final resolvedAirlines = airlines ?? (airline != null && airline.isNotEmpty ? [airline] : const <String>[]);
+    final resolvedAirline = (resolvedAirlines.isNotEmpty ? resolvedAirlines.first : airline) ?? 'Saudia Airlines';
+
     final newTicket = TicketOrder(
       id: newId,
       route: resolvedRoute,
       packageName: packageName,
       status: status,
-      airline: airline ?? 'Saudia Airlines',
+      airline: resolvedAirline,
+      airlines: resolvedAirlines,
       flightNumber: flightNumber ?? 'SV ${100 + (DateTime.now().millisecond % 899)}',
       departureSchedule: departureSchedule ?? 'Jadwal Segera Dikonfirmasi',
       flightRoute: resolvedFlightRoute,
@@ -246,6 +256,10 @@ class TicketService {
       flightDuration: resolvedRoute.contains('Jeddah') ? '9j 45m Langsung' : 'Penerbangan Pilihan',
       passengerName: customerName.isNotEmpty ? customerName : 'Zara Anselma',
       passengerType: passengerType ?? 'Dewasa',
+      hotels: hotels ?? const [],
+      hotelsConfirmed: hotelsConfirmed,
+      airlinesConfirmed: airlinesConfirmed,
+      accommodationUpdatedAt: accommodationUpdatedAt,
       imageUrl: imageUrl != null && imageUrl.isNotEmpty
           ? imageUrl
           : (packageName.toLowerCase().contains('japan') || packageName.toLowerCase().contains('jepang')

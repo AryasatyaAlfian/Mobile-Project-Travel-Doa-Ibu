@@ -331,13 +331,20 @@ class _PackageListPageState extends State<PackageListPage> {
     _fetchPackages();
   }
 
+  String? _resolveCategorySlug(String? cat) {
+    if (cat == null || cat == 'Semua') return null;
+    final lower = cat.toLowerCase();
+    if (lower.contains('umrah') || lower.contains('haji')) return 'paket-umrah';
+    if (lower.contains('domestik')) return 'wisata-domestik';
+    if (lower.contains('internasional') || lower.contains('halal')) return 'wisata-internasional';
+    return lower;
+  }
+
   void _fetchPackages() {
     final query = _searchController.text.trim();
-    _future = widget.api.packages(
+    _future = widget.api.fetchAllPackages(
       search: query.isEmpty ? null : query,
-      category: (_selectedCategory == null || _selectedCategory == 'Semua')
-          ? null
-          : _selectedCategory!.toLowerCase(),
+      category: _resolveCategorySlug(_selectedCategory),
     );
   }
 

@@ -82,6 +82,23 @@ class PackageFeatureItem {
   final String? description;
 }
 
+class OutlineItem {
+  OutlineItem({required this.text, this.items = const []});
+
+  factory OutlineItem.fromJson(Map<String, dynamic> json) => OutlineItem(
+        text: json['text'] as String? ?? '',
+        items: (json['items'] as List?)?.map((e) => '$e').toList() ?? const [],
+      );
+
+  final String text;
+  final List<String> items;
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'items': items,
+      };
+}
+
 class DepartureGroupItem {
   DepartureGroupItem({
     required this.id,
@@ -92,10 +109,15 @@ class DepartureGroupItem {
     this.quota,
     this.remainingQuota,
     this.isFull = false,
+    this.airlines = const [],
+    this.airlinesConfirmed = false,
+    this.hotels = const [],
+    this.hotelsConfirmed = false,
+    this.accommodationUpdatedAt,
   });
 
   factory DepartureGroupItem.fromJson(Map<String, dynamic> json) => DepartureGroupItem(
-        id: json['id'] as int,
+        id: (json['id'] as num?)?.toInt() ?? 0,
         name: json['name'] as String? ?? '',
         departureDate: json['departure_date'] != null ? DateTime.tryParse(json['departure_date'] as String) : null,
         returnDate: json['return_date'] != null ? DateTime.tryParse(json['return_date'] as String) : null,
@@ -103,6 +125,15 @@ class DepartureGroupItem {
         quota: json['quota'] as int?,
         remainingQuota: json['remaining_quota'] as int?,
         isFull: json['is_full'] as bool? ?? false,
+        airlines: (json['airlines'] as List?)?.map((e) => '$e').toList() ?? const [],
+        airlinesConfirmed: json['airlines_confirmed'] as bool? ?? false,
+        hotels: (json['hotels'] as List?)
+                ?.whereType<Map<String, dynamic>>()
+                .map(OutlineItem.fromJson)
+                .toList() ??
+            const [],
+        hotelsConfirmed: json['hotels_confirmed'] as bool? ?? false,
+        accommodationUpdatedAt: json['accommodation_updated_at'] as String?,
       );
 
   final int id;
@@ -113,6 +144,11 @@ class DepartureGroupItem {
   final int? quota;
   final int? remainingQuota;
   final bool isFull;
+  final List<String> airlines;
+  final bool airlinesConfirmed;
+  final List<OutlineItem> hotels;
+  final bool hotelsConfirmed;
+  final String? accommodationUpdatedAt;
 }
 
 class TravelPackage {
@@ -363,6 +399,7 @@ class BookingRequest {
     this.preferredDate,
     this.specialRequests,
     this.contactPreference = 'whatsapp',
+    this.roomType,
   });
 
   final int packageCategoryId;
@@ -376,11 +413,13 @@ class BookingRequest {
   final DateTime? preferredDate;
   final String? specialRequests;
   final String contactPreference; // whatsapp | email | phone
+  final String? roomType;
 
   Map<String, dynamic> toJson() => {
         'package_category_id': packageCategoryId,
         if (packageId != null) 'package_id': packageId,
         if (departureGroupId != null) 'departure_group_id': departureGroupId,
+        if (roomType != null && roomType!.isNotEmpty) 'room_type': roomType,
         'customer_name': customerName,
         'customer_whatsapp': customerWhatsapp,
         'customer_email': customerEmail,
