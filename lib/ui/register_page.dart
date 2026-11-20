@@ -392,7 +392,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     left: 39,
                     top: 461,
                     width: 337,
-                    height: 36,
+                    height: 46,
                     child: _buildField(
                       controller: _passwordController,
                       hint: '********',
@@ -413,7 +413,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     left: 39,
                     top: 552,
                     width: 337,
-                    height: 36,
+                    height: 46,
                     child: _buildField(
                       controller: _confirmController,
                       hint: '********',
@@ -662,10 +662,10 @@ class _RegisterPageState extends State<RegisterPage> {
           // weui:eyes-off-outlined — 24x24 di left 302, top 6
           if (trailing != null)
             Positioned(
-              left: 302,
-              top: 5,
-              width: 24,
-              height: 24,
+              left: 280,
+              top: -1,
+              width: 46,
+              height: 46,
               child: trailing,
             ),
         ],

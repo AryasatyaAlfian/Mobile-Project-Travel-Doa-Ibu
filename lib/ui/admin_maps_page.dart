@@ -22,10 +22,12 @@ class AdminMapsPage extends StatefulWidget {
     super.key,
     required this.api,
     this.initialAlert,
+    this.initialGroupId,
   });
 
   final TravelApi api;
   final AdminSosAlert? initialAlert;
+  final int? initialGroupId;
 
   @override
   State<AdminMapsPage> createState() => _AdminMapsPageState();
@@ -143,6 +145,10 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
       setState(() {
         _allGroups = tracks;
         _sosAlerts = sosList;
+        if (widget.initialGroupId != null) {
+          final matches = tracks.where((g) => g.id == widget.initialGroupId).toList();
+          if (matches.isNotEmpty) _selectedGroup = matches.first;
+        }
         _isLoading = false;
       });
     } catch (_) {
