@@ -419,7 +419,7 @@ class _PackageListPageState extends State<PackageListPage> {
   /// daftar kosong.
   List<PackageCategory>? _categories;
 
-  final List<String> _categories = const [
+  final List<String> _categoryChips = const [
     'Semua',
     'Umrah',
     'Wisata Halal',
@@ -462,7 +462,7 @@ class _PackageListPageState extends State<PackageListPage> {
     }
 
     final needle = label.toLowerCase();
-    for (final category in categories!) {
+    for (final category in categories) {
       final name = category.name.toLowerCase();
       if (name.contains(needle) || needle.contains(name)) return category.slug;
     }
@@ -552,7 +552,7 @@ class _PackageListPageState extends State<PackageListPage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
-              children: _categories.map((cat) {
+              children: _categoryChips.map((cat) {
                 final isSelected = (_selectedCategory == null && cat == 'Semua') || (_selectedCategory == cat);
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),

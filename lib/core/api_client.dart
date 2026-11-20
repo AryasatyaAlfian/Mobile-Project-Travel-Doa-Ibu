@@ -60,6 +60,61 @@ class ApiClient {
     return _send(() => _http.put(_uri(path), headers: _headers(), body: jsonEncode(body ?? {})));
   }
 
+
+  /// Unggah berkas multipart (dokumen). Mengembalikan JSON seperti [_send].
+  Future<Map<String, dynamic>> postMultipart(
+    String path, {
+    required String field,
+    required String filePath,
+    required String filename,
+    Map<String, String> fields = const {},
+  }) async {
+    final request = http.MultipartRequest('POST', _uri(path))
+      ..headers.addAll({
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      })
+      ..fields.addAll(fields)
+      ..files.add(await http.MultipartFile.fromPath(field, filePath, filename: filename));
+
+    final http.Response response;
+    try {
+      final streamed = await request.send().timeout(ApiConfig.timeout);
+      response = await http.Response.fromStream(streamed);
+    } on TimeoutException {
+      throw ApiException('Unggahan melewati batas waktu. Coba lagi.');
+    } catch (_) {
+      throw ApiException('Tidak dapat mengunggah berkas ke server.');
+    }
+
+    final dynamic decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+    final body = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{'data': decoded};
+    if (response.statusCode >= 200 && response.statusCode < 300) return body;
+
+    final errors = <String, List<String>>{};
+    if (body['errors'] is Map) {
+      (body['errors'] as Map).forEach((key, value) => errors['$key'] = (value as List).map((e) => '$e').toList());
+    }
+    throw ApiException(body['message'] as String? ?? 'Gagal mengunggah berkas (${response.statusCode}).', statusCode: response.statusCode, errors: errors);
+  }
+
+  /// Unduh isi berkas (dokumen) dengan token Bearer.
+  Future<List<int>> getBytes(String path) async {
+    final http.Response response;
+    try {
+      response = await _http.get(_uri(path), headers: {
+        'Accept': '*/*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      }).timeout(ApiConfig.timeout);
+    } on TimeoutException {
+      throw ApiException('Unduhan melewati batas waktu.');
+    } catch (_) {
+      throw ApiException('Tidak dapat mengunduh berkas.');
+    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return response.bodyBytes;
+    throw ApiException('Gagal mengunduh berkas (${response.statusCode}).', statusCode: response.statusCode);
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) {
     final uri = Uri.parse('$_baseUrl$path');
     return query == null || query.isEmpty ? uri : uri.replace(queryParameters: query);

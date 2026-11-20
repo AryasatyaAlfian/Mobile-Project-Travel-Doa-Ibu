@@ -7,8 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.mobile_project_doa_ibu"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
 
     compileOptions {
         // Wajib untuk flutter_local_notifications (desugaring java.time).
@@ -17,9 +21,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
 
     signingConfigs {
         create("demo") {
@@ -38,7 +39,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

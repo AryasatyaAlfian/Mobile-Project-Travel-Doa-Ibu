@@ -613,4 +613,29 @@ class TravelApi {
       return {};
     }
   }
+
+  /// Backend: GET /api/v1/documents — dokumen milik akun yang login.
+  Future<List<Map<String, dynamic>>> getDocuments() async {
+    try {
+      final json = await client.get('/documents');
+      return (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Backend: POST /api/v1/documents/upload (multipart).
+  Future<Map<String, dynamic>> uploadDocument(String filePath, {required String filename, required String documentType}) async {
+    final json = await client.postMultipart(
+      '/documents/upload',
+      field: 'document',
+      filePath: filePath,
+      filename: filename,
+      fields: {'document_type': documentType},
+    );
+    return (json['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  /// Backend: GET /api/v1/documents/{id}/content (Bearer token).
+  Future<List<int>> downloadDocument(int id) => client.getBytes('/documents/$id/content');
 }

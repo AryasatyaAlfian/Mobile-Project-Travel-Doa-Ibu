@@ -8,6 +8,7 @@ import 'profile_digital_payment_page.dart';
 import 'profile_logout_page.dart';
 import 'profile_security_page.dart';
 import 'profile_settings_page.dart';
+import 'jemaah_services_pages.dart';
 import 'widgets/skeleton_view.dart';
 
 /// Halaman Profil Utama Pengguna (Profile)
@@ -398,6 +399,42 @@ class _ProfilePageState extends State<ProfilePage> {
                         subtitle: 'Keluar dari akun Anda',
                         onTap: _handleLogout,
                       ),
+                      if (!isStaff)
+                        _buildMenuCard(
+                          icon: Icons.badge_outlined,
+                          title: 'Profil Jemaah',
+                          subtitle: 'Identitas, rombongan, dan pembimbing',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: JemaahProfileDetailPage(api: widget.api))),
+                        ),
+                      if (!isStaff)
+                        _buildMenuCard(
+                          icon: Icons.folder_shared_outlined,
+                          title: 'Dokumen Saya',
+                          subtitle: 'Paspor, KTP, KK, dan pas foto',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: DocumentsPage(api: widget.api))),
+                        ),
+                      if (!isStaff)
+                        _buildMenuCard(
+                          icon: Icons.flight_takeoff_rounded,
+                          title: 'Visa & Keberangkatan',
+                          subtitle: 'Status visa dan jadwal keberangkatan',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: VisaDeparturePage(api: widget.api))),
+                        ),
+                      if (isStaff)
+                        _buildMenuCard(
+                          icon: Icons.history_rounded,
+                          title: 'Riwayat Keberangkatan',
+                          subtitle: 'Keberangkatan per bulan dan jemaahnya',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: DepartureHistoryPage(api: widget.api))),
+                        ),
+                      if (isStaff)
+                        _buildMenuCard(
+                          icon: Icons.groups_2_outlined,
+                          title: 'Kelola Jemaah per Grup',
+                          subtitle: 'Anggota grup, tracker, dan detail jemaah',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: GroupManagementPage(api: widget.api, isAdmin: isRoleAdmin))),
+                        ),
+
                     ],
                   ],
                 ),
