@@ -306,12 +306,18 @@ class _LoginPageState extends State<LoginPage> {
                         onTap: () => setState(
                           () => _obscurePassword = !_obscurePassword,
                         ),
-                        child: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 24,
-                          color: _dark,
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 24,
+                              color: _dark,
+                            ),
+                          ),
                         ),
                       ),
                     ),

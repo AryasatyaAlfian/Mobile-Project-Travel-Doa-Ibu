@@ -594,10 +594,16 @@ class _RegisterPageState extends State<RegisterPage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Icon(
-        obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-        size: 24,
-        color: _dark,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: Icon(
+            obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            size: 24,
+            color: _dark,
+          ),
+        ),
       ),
     );
   }

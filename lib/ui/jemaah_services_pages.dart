@@ -809,7 +809,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
               style: FilledButton.styleFrom(backgroundColor: _ink, foregroundColor: Colors.white),
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => widget.isAdmin ? AdminMapsPage(api: widget.api) : MuthawwifMapsPage(api: widget.api)));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => widget.isAdmin ? AdminMapsPage(api: widget.api) : MuthawwifMapsPage(api: widget.api, initialGroupId: id)));
               },
               icon: const Icon(Icons.map_outlined),
               label: const Text('Buka Tracker Grup'),

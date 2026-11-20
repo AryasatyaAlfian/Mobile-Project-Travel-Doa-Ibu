@@ -14,10 +14,12 @@ class MuthawwifMapsPage extends StatefulWidget {
     super.key,
     required this.api,
     this.initialAlert,
+    this.initialGroupId,
   });
 
   final TravelApi api;
   final AdminSosAlert? initialAlert;
+  final int? initialGroupId;
 
   @override
   State<MuthawwifMapsPage> createState() => _MuthawwifMapsPageState();
@@ -68,7 +70,10 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
       final sosList = rawSos.map((s) => AdminSosAlert.fromJson(s)).toList();
 
       if (rawGroups.isNotEmpty) {
-        final g = rawGroups.first;
+        final g = rawGroups.firstWhere(
+          (item) => widget.initialGroupId == null || (item['id'] as num?)?.toInt() == widget.initialGroupId,
+          orElse: () => rawGroups.first,
+        );
         final id = (g['id'] as num?)?.toInt() ?? 1;
         final pkg = g['package'] as Map<String, dynamic>?;
         final pkgName = (pkg?['name'] as String?) ?? 'Umrah Plus Turki';
