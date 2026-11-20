@@ -28,15 +28,16 @@ class _MapsPageState extends State<MapsPage> {
   static const Color _red = Color(0xFFEF4444);
 
   // Status Lokasi & Koordinat Lapangan (Dinamis dari Backend)
-  String _currentAddress = 'Ibrahim Al Khalil St, Ajyad, Makkah 24231';
-  String _currentCoords = '21.4189° N, 39.8246° E';
+  String _currentAddress = '';
+  String _currentCoords = '';
   double _currentLat = 21.4189;
   double _currentLng = 39.8246;
 
   // Profil Jemaah & Rombongan (Dinamis dari Backend)
   String _userName = 'Zara';
-  String _groupId = 'AGR8598';
-  String _muthawwifName = 'Ust. Ahmad Fauzi';
+  String _groupId = '';
+  String _muthawwifName = '';
+  bool _hasAssignment = false;
 
   // State SOS & Timer
   bool _isSosActive = false;
@@ -104,11 +105,10 @@ class _MapsPageState extends State<MapsPage> {
     try {
       final muth = await widget.api!.myMuthawwif();
       if (!mounted) return;
-      if (muth != null && muth.name.isNotEmpty) {
-        setState(() {
-          _muthawwifName = muth.name;
-        });
-      }
+      setState(() {
+        _hasAssignment = muth != null && muth.name.isNotEmpty;
+        _muthawwifName = muth?.name ?? '';
+      });
     } catch (_) {}
   }
 
@@ -240,7 +240,7 @@ class _MapsPageState extends State<MapsPage> {
             Positioned.fill(
               child: MapsCanvasView(
                 isSosActive: _isSosActive,
-                showMuthawwif: true,
+                showMuthawwif: _hasAssignment,
                 onTapMuthawwif: () {
                   Navigator.push(
                     context,
@@ -313,6 +313,12 @@ class _MapsPageState extends State<MapsPage> {
                       icon: Icons.groups_rounded,
                       tooltip: 'Lacak Mutawwif & Rombongan',
                       onTap: () {
+                        if (!_hasAssignment) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Belum ada penugasan muthawwif untuk akun ini.')),
+                          );
+                          return;
+                        }
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -765,7 +771,7 @@ class _MapsPageState extends State<MapsPage> {
             children: [
               Expanded(
                 child: Text(
-                  _currentAddress,
+                  _currentAddress.isEmpty ? 'Lokasi belum diketahui' : _currentAddress,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
@@ -779,30 +785,28 @@ class _MapsPageState extends State<MapsPage> {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
-                  color: _green,
+                decoration: BoxDecoration(
+                  color: _hasAssignment ? _green : _muted,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
-                'Live Tracking',
+                _hasAssignment ? 'Live Tracking' : 'Belum ada penugasan',
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: _green,
+                  color: _hasAssignment ? _green : _muted,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 2),
-          Text(
-            'Coordinates: $_currentCoords',
-            style: GoogleFonts.poppins(
-              fontSize: 10,
-              color: _muted,
+          if (_currentCoords.isNotEmpty)
+            Text(
+              'Coordinates: $_currentCoords',
+              style: GoogleFonts.poppins(fontSize: 10, color: _muted),
             ),
-          ),
         ],
       ),
     );

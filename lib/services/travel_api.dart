@@ -442,6 +442,16 @@ class TravelApi {
     }
   }
 
+  /// Backend: GET /api/v1/me/bookings — tiket milik akun aktif (tanpa seed).
+  Future<List<Map<String, dynamic>>> myBookings() async {
+    try {
+      final json = await client.get('/me/bookings');
+      return (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Backend: GET /api/v1/me/profile
   Future<Map<String, dynamic>> getProfile() async {
     try {

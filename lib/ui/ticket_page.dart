@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/smooth_page_route.dart';
 import '../models/ticket_order.dart';
 import '../services/ticket_service.dart';
+import '../services/travel_api.dart';
 import 'eticket_view_page.dart';
 import 'widgets/skeleton_view.dart';
 
@@ -18,11 +19,13 @@ class TicketPage extends StatefulWidget {
     super.key,
     this.initialTab = 0,
     this.initialTicketId,
+    this.api,
     this.isLoading = false,
   });
 
   final int initialTab;
   final String? initialTicketId;
+  final TravelApi? api;
   final bool isLoading;
 
   @override
@@ -34,8 +37,8 @@ class _TicketPageState extends State<TicketPage> {
   int _currentTab = 0;
   bool _isLoading = false;
 
-  late List<TicketOrder> _activeTickets;
-  late List<TicketOrder> _completedTickets;
+  List<TicketOrder> _activeTickets = [];
+  List<TicketOrder> _completedTickets = [];
   TicketOrder? _selectedTicket;
   bool _openedFromTicketPage = false;
 
@@ -72,16 +75,53 @@ class _TicketPageState extends State<TicketPage> {
     });
   }
 
-  void _loadTickets() {
-    _activeTickets = TicketService.instance.getActiveTickets();
-    _completedTickets = TicketService.instance.getCompletedTickets();
+  Future<void> _loadTickets() async {
+    if (widget.api == null) {
+      _activeTickets = TicketService.instance.getActiveTickets();
+      _completedTickets = TicketService.instance.getCompletedTickets();
+    } else {
+      final bookings = await widget.api!.myBookings();
+      final orders = bookings.map(_fromBooking).toList();
+      _activeTickets = orders.where((t) => const {'new', 'booked', 'confirmed'}.contains(t.status)).toList();
+      _completedTickets = orders.where((t) => const {'completed', 'cancelled'}.contains(t.status)).toList();
+    }
 
     if (widget.initialTicketId != null) {
-      _selectedTicket = TicketService.instance.getTicketById(widget.initialTicketId!);
+      final all = [..._activeTickets, ..._completedTickets];
+      for (final t in all) {
+        if (t.id == widget.initialTicketId) {
+          _selectedTicket = t;
+          break;
+        }
+      }
       if (_selectedTicket != null) {
         _openedFromTicketPage = true;
       }
     }
+    if (mounted) setState(() {});
+  }
+
+  TicketOrder _fromBooking(Map<String, dynamic> booking) {
+    final rawDate = (booking['preferred_date'] ?? booking['created_at'])?.toString();
+    final date = rawDate == null ? null : DateTime.tryParse(rawDate);
+    final packageName = (booking['package_name'] ?? '-').toString();
+    return TicketOrder(
+      id: (booking['booking_code'] ?? booking['id'] ?? '-').toString(),
+      route: packageName,
+      packageName: packageName,
+      status: (booking['status'] ?? 'new').toString(),
+      airline: '-',
+      flightNumber: '-',
+      departureSchedule: date == null ? '-' : '${date.day}/${date.month}/${date.year}',
+      flightRoute: '-',
+      departureAirport: '-',
+      arrivalAirport: '-',
+      arrivalSchedule: '-',
+      flightDuration: '-',
+      passengerName: (booking['customer_name'] ?? '-').toString(),
+      imageUrl: 'assets/images/Background.webp',
+      createdAt: date,
+    );
   }
 
   @override

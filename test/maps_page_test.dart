@@ -35,6 +35,12 @@ void main() {
               200,
             );
           }
+          if (request.url.path.contains('/me/muthawwif')) {
+            return http.Response(
+              '{"data":{"id":2,"name":"Ust. Ahmad Fauzi","phone":"081234567890"}}',
+              200,
+            );
+          }
           if (request.url.path.contains('/me/muthawwif/contact')) {
             return http.Response(
               '{"status":"success","data":{"name":"Ust. Ahmad Fauzi","phone":"081234567890"}}',

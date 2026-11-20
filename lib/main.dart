@@ -221,6 +221,7 @@ class _MainScreenState extends State<MainScreen> {
       currentBody = TicketPage(
         key: const ValueKey('ticket_page'),
         initialTicketId: widget.initialTicketId,
+        api: widget.api,
       );
     } else if (_currentIndex == 2) {
       currentBody = MapsPage(

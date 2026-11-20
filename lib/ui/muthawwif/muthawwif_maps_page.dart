@@ -101,7 +101,7 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
 
         _currentGroup = AdminDepartureGroupTrack(
           id: id,
-          code: name.startsWith('AGR-') ? name : 'AGR-12',
+          code: 'AGR-$id',
           packageName: pkgName,
           city: 'Makkah',
           muthawwifId: (muth?['id'] as num?)?.toInt() ?? 10,
@@ -109,14 +109,14 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
           muthawwifPhone: muthPhone,
           muthawwifLat: centerLat,
           muthawwifLon: centerLon,
-          totalJemaah: members.isNotEmpty ? members.length : 24,
-          safeCount: safe > 0 ? safe : 22,
-          outOfRadiusCount: outOfRad > 0 ? outOfRad : 2,
+          totalJemaah: members.length,
+          safeCount: safe,
+          outOfRadiusCount: outOfRad,
           sosCount: sosCount,
-          members: members.isNotEmpty ? members : _buildFallbackMembers(centerLat, centerLon),
+          members: members,
         );
       } else {
-        _currentGroup = _buildDefaultMuthawwifGroup();
+        _currentGroup = null;
       }
 
       if (mounted) {
@@ -126,133 +126,11 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
       // Fallback data jika backend offline / belum ada tracker
       if (mounted) {
         setState(() {
-          _currentGroup = _buildDefaultMuthawwifGroup();
+          _currentGroup = null;
           _isLoading = false;
         });
       }
     }
-  }
-
-  AdminDepartureGroupTrack _buildDefaultMuthawwifGroup() {
-    final double centerLat = _makkahCenter.latitude + 0.0006;
-    final double centerLon = _makkahCenter.longitude - 0.0006;
-    final members = _buildFallbackMembers(centerLat, centerLon);
-
-    final safe = members.where((m) => !m.isOutOfRadius && !m.hasActiveSos).length;
-    final outOfRad = members.where((m) => m.isOutOfRadius).length;
-    final sosCount = members.where((m) => m.hasActiveSos).length;
-
-    return AdminDepartureGroupTrack(
-      id: 1,
-      code: 'AGR-12',
-      packageName: 'Umrah Plus Turki',
-      city: 'Makkah',
-      muthawwifId: 10,
-      muthawwifName: 'Ust. Felix Siauw',
-      muthawwifPhone: '081234567890',
-      muthawwifLat: centerLat,
-      muthawwifLon: centerLon,
-      totalJemaah: 24,
-      safeCount: safe > 0 ? safe : 22,
-      outOfRadiusCount: outOfRad > 0 ? outOfRad : 2,
-      sosCount: sosCount,
-      members: members,
-    );
-  }
-
-  List<AdminTrackingMember> _buildFallbackMembers(double mLat, double mLon) {
-    return [
-      AdminTrackingMember(
-        id: 101,
-        name: 'Rina Kartika',
-        phone: '08123456781',
-        locationText: 'Ajyad · 3 mnt lalu',
-        latitude: mLat - 0.0052,
-        longitude: mLon + 0.0046,
-        distanceToMuthawwifMeters: 2400,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 102,
-        name: 'Hendra Wijaya',
-        phone: '08123456782',
-        locationText: 'Misfalah · 1 mnt lalu',
-        latitude: mLat - 0.0058,
-        longitude: mLon - 0.0008,
-        distanceToMuthawwifMeters: 2100,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 103,
-        name: 'Zahra Anselma',
-        phone: '08123456783',
-        locationText: 'Abraj Al Bait · 1 mnt lalu',
-        latitude: mLat - 0.0034,
-        longitude: mLon - 0.0018,
-        distanceToMuthawwifMeters: 1200,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 104,
-        name: 'Siti Aminah',
-        phone: '08123456784',
-        locationText: 'Dekat Gate 79, Masjidil Haram',
-        latitude: mLat - 0.0010,
-        longitude: mLon - 0.0012,
-        distanceToMuthawwifMeters: 650,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 105,
-        name: 'Aisyah Rahma',
-        phone: '08123456785',
-        locationText: 'Abraj Al Bait, Lantai Dasar',
-        latitude: mLat - 0.0015,
-        longitude: mLon - 0.0028,
-        distanceToMuthawwifMeters: 1200,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 106,
-        name: 'Muhammad Ridwan',
-        phone: '08123456786',
-        locationText: 'Jabal Omar · Live',
-        latitude: mLat - 0.0003,
-        longitude: mLon - 0.0024,
-        distanceToMuthawwifMeters: 400,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 107,
-        name: 'Nurul Fadilah',
-        phone: '08123456787',
-        locationText: 'Jabal Omar · Live',
-        latitude: mLat - 0.0008,
-        longitude: mLon - 0.0016,
-        distanceToMuthawwifMeters: 500,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 108,
-        name: 'Yusuf Habibi',
-        phone: '08123456788',
-        locationText: 'Misfalah · Live',
-        latitude: mLat - 0.0025,
-        longitude: mLon - 0.0004,
-        distanceToMuthawwifMeters: 600,
-        hasActiveSos: false,
-      ),
-      AdminTrackingMember(
-        id: 109,
-        name: 'Dedi Setiawan',
-        phone: '08123456789',
-        locationText: 'Pelataran Tawaf · Live',
-        latitude: _makkahCenter.latitude - 0.0004,
-        longitude: _makkahCenter.longitude - 0.0003,
-        distanceToMuthawwifMeters: 250,
-        hasActiveSos: false,
-      ),
-    ];
   }
 
   void _showSosPopup(AdminSosAlert alert) {
@@ -338,7 +216,19 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
       );
     }
 
-    final group = _currentGroup ?? _buildDefaultMuthawwifGroup();
+    final group = _currentGroup;
+    if (group == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9F7F2),
+        appBar: AppBar(backgroundColor: const Color(0xFFF9F7F2), title: const Text('Peta Lapangan')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Belum ada grup bimbingan yang ditugaskan.', textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
     final muthawwifPos = LatLng(
       group.muthawwifLat ?? (_makkahCenter.latitude + 0.0006),
       group.muthawwifLon ?? (_makkahCenter.longitude - 0.0006),
@@ -684,7 +574,8 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
                       )
                     else
                       // Pill Nama Rombongan: "• Rombongan AGR-12" (Gambar 3)
-                      Container(
+                      Flexible(
+                        child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -709,16 +600,21 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Rombongan ${group.code}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: _ink,
+                            Flexible(
+                              child: Text(
+                                'Rombongan ${group.code}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _ink,
+                                ),
                               ),
                             ),
                           ],
                         ),
+                      ),
                       ),
 
                     // Map Control Floating Buttons (Kanan Atas)
@@ -1440,11 +1336,28 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
                   border: Border.all(color: const Color(0xFFFFCC80)),
                 ),
                 child: Text(
-                  'Di luar · ${GeodesicHelper.formatDistance(member.distanceToMuthawwifMeters ?? 2400)}',
+                  'Di luar · ${member.distanceToMuthawwifMeters == null ? 'jarak belum tersedia' : GeodesicHelper.formatDistance(member.distanceToMuthawwifMeters!)}',
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFE65100),
+                  ),
+                ),
+              )
+            else if (member.latitude == null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                ),
+                child: Text(
+                  'Lokasi belum diketahui',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6B7280),
                   ),
                 ),
               )
@@ -1457,7 +1370,9 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
                   border: Border.all(color: const Color(0xFFA5D6A7)),
                 ),
                 child: Text(
-                  'Aman · ${GeodesicHelper.formatDistance(member.distanceToMuthawwifMeters ?? 1200)}',
+                  member.distanceToMuthawwifMeters != null
+                      ? 'Aman · ${GeodesicHelper.formatDistance(member.distanceToMuthawwifMeters!)}'
+                      : 'Aman',
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,

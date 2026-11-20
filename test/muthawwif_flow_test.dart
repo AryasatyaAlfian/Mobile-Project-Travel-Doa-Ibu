@@ -383,7 +383,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verifikasi Header Pill
-      expect(find.text('Rombongan AGR-12'), findsOneWidget);
+      expect(find.text('Rombongan AGR-1'), findsOneWidget);
 
       // Verifikasi Banner Peringatan
       expect(find.textContaining('di luar radius aman'), findsOneWidget);
