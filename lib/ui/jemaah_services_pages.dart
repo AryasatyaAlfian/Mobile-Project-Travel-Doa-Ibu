@@ -141,7 +141,7 @@ class _InfoCard extends StatelessWidget {
           children: [
             Row(children: [
               Expanded(child: Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: _ink))),
-              if (trailing case final widget?) widget,
+              trailing ?? const SizedBox.shrink(),
             ]),
             const SizedBox(height: 10),
             ...children,
@@ -741,7 +741,6 @@ class _DepartureHistoryPageState extends State<DepartureHistoryPage> {
                                         leading: const Icon(Icons.person_outline, size: 20),
                                         title: Text(_text(member['name']), style: GoogleFonts.poppins(fontSize: 12.5)),
                                         subtitle: Text(visaLabel(_text(member['visa_status'])), style: GoogleFonts.poppins(fontSize: 11, color: visaColor(_text(member['visa_status'])))),
-                                        trailing: Text(_text(member['visa_label']), style: GoogleFonts.poppins(fontSize: 10, color: _muted)),
                                       ),
                                 ],
                               ),
@@ -872,4 +871,70 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                     ),
                   ),
       );
+}
+
+
+class StaffProfilePage extends StatefulWidget {
+  const StaffProfilePage({super.key, required this.api});
+  final TravelApi api;
+
+  @override
+  State<StaffProfilePage> createState() => _StaffProfilePageState();
+}
+
+class _StaffProfilePageState extends State<StaffProfilePage> {
+  bool _loading = true;
+  Map<String, dynamic> _data = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final data = await widget.api.getProfile();
+    if (!mounted) return;
+    setState(() {
+      _data = data;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const _PageScaffold(title: 'Profil Staf', child: Center(child: CircularProgressIndicator()));
+    if (_data.isEmpty) {
+      return _PageScaffold(title: 'Profil Staf', child: _StateView(icon: Icons.support_agent_outlined, title: 'Profil belum tersedia', message: 'Data staf/muthawwif belum dapat dimuat.', onRetry: _load));
+    }
+    final profile = (_data['profile'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final languages = (profile['languages'] as List?)?.map((e) => '$e').where((e) => e.isNotEmpty).join(', ') ?? '';
+    return _PageScaffold(
+      title: 'Profil Staf',
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            _identityHeader(_data),
+            _InfoCard(title: 'Kontak & Peran', children: [
+              _InfoRow('Nama', _text(_data['name'])),
+              _InfoRow('Email', _text(_data['email'])),
+              _InfoRow('Telepon', _text(_data['phone'])),
+              _InfoRow('Peran', _text(_data['role']) == 'muthawwif' ? 'Muthawwif' : (_text(_data['role']) == 'admin' ? 'Admin' : _text(_data['role']))),
+              _InfoRow('Jemaah bimbingan', _text(_data['guided_jemaah_count'])),
+            ]),
+            _InfoCard(title: 'Profil Profesional', children: [
+              _InfoRow('Spesialisasi', _text(profile['specialization'])),
+              _InfoRow('Pengalaman', profile['years_experience'] == null ? '' : '${profile['years_experience']} tahun'),
+              _InfoRow('Bahasa', languages),
+              _InfoRow('Sertifikasi', _text(profile['certification_number'])),
+              _InfoRow('Bio', _text(profile['bio'])),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
 }

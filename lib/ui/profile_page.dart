@@ -422,6 +422,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       if (isStaff)
                         _buildMenuCard(
+                          icon: Icons.support_agent_rounded,
+                          title: 'Profil Staf/Muthawwif',
+                          subtitle: 'Data profil dan grup bimbingan',
+                          onTap: () => Navigator.push(context, SmoothPageRoute(page: StaffProfilePage(api: widget.api))),
+                        ),
+                      if (isStaff)
+                        _buildMenuCard(
                           icon: Icons.history_rounded,
                           title: 'Riwayat Keberangkatan',
                           subtitle: 'Keberangkatan per bulan dan jemaahnya',
