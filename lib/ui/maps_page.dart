@@ -30,8 +30,9 @@ class _MapsPageState extends State<MapsPage> {
   // Status Lokasi & Koordinat Lapangan (Dinamis dari Backend)
   String _currentAddress = '';
   String _currentCoords = '';
-  double _currentLat = 21.4189;
-  double _currentLng = 39.8246;
+  double _currentLat = 0;
+  double _currentLng = 0;
+  bool _hasLocation = false;
 
   // Profil Jemaah & Rombongan (Dinamis dari Backend)
   String _userName = 'Zara';
@@ -90,6 +91,7 @@ class _MapsPageState extends State<MapsPage> {
           if (loc['latitude'] != null && loc['longitude'] != null) {
             _currentLat = (loc['latitude'] as num).toDouble();
             _currentLng = (loc['longitude'] as num).toDouble();
+            _hasLocation = true;
             _currentCoords =
                 '${_currentLat.toStringAsFixed(4)}° N, ${_currentLng.toStringAsFixed(4)}° E';
           }
@@ -113,6 +115,12 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   void _triggerSos() {
+    if (!_hasLocation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lokasi belum tersedia. Aktifkan lokasi lalu coba lagi.')),
+      );
+      return;
+    }
     setState(() {
       _isSosActive = true;
       _sosDurationSeconds = 0;
@@ -167,6 +175,12 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   Future<void> _handleCheckIn() async {
+    if (!_hasLocation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lokasi belum tersedia. Check In dinonaktifkan.')),
+      );
+      return;
+    }
     setState(() => _isSendingLocation = true);
     try {
       if (widget.api != null) {
