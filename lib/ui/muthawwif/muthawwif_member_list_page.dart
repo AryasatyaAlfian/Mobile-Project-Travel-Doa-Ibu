@@ -59,10 +59,6 @@ class _MuthawwifMemberListPageState extends State<MuthawwifMemberListPage> {
       }
     } catch (_) {}
 
-    if (_members.isEmpty) {
-      _members = MuthawwifMemberInfo.defaultMemberList();
-    }
-
     if (mounted) setState(() => _isLoading = false);
   }
 

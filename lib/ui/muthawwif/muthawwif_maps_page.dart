@@ -70,7 +70,6 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
       if (rawGroups.isNotEmpty) {
         final g = rawGroups.first;
         final id = (g['id'] as num?)?.toInt() ?? 1;
-        final name = (g['group_name'] as String?) ?? (g['name'] as String?) ?? 'AGR-12';
         final pkg = g['package'] as Map<String, dynamic>?;
         final pkgName = (pkg?['name'] as String?) ?? 'Umrah Plus Turki';
         final muth = g['muthawwif'] as Map<String, dynamic>?;
@@ -95,7 +94,7 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
           );
         }).toList();
 
-        final safe = members.where((m) => !m.isOutOfRadius && !m.hasActiveSos).length;
+        final safe = members.where((m) => m.latitude != null && !m.isOutOfRadius && !m.hasActiveSos).length;
         final outOfRad = members.where((m) => m.isOutOfRadius).length;
         final sosCount = members.where((m) => m.hasActiveSos).length;
 
@@ -452,36 +451,6 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
                     height: 85,
                     child: _buildMuthawwifMarker(),
                   ),
-
-                  // Marker Ringkasan Anggota Dalam Haram "+16" (Gambar 3)
-                  if (!_isTrackingMember)
-                    Marker(
-                      point: LatLng(_makkahCenter.latitude - 0.0006, _makkahCenter.longitude - 0.0001),
-                      width: 32,
-                      height: 32,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1F1F1F),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            '+16',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
 
                   // Marker Anggota Jemaah
                   ...group.members.map((m) {
