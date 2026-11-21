@@ -921,14 +921,23 @@ class _StaffProfilePageState extends State<StaffProfilePage> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final data = await widget.api.getProfile();
-    final groups = await widget.api.getDepartures();
-    if (!mounted) return;
-    setState(() {
-      _data = data;
-      _groups = groups;
-      _loading = false;
-    });
+    try {
+      final data = await widget.api.getProfile();
+      final groups = await widget.api.getDepartures();
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _groups = groups;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _data = const {};
+        _groups = const [];
+        _loading = false;
+      });
+    }
   }
 
   @override
