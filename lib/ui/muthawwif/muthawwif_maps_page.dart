@@ -65,7 +65,12 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
     setState(() => _isLoading = true);
 
     try {
-      final rawGroups = await widget.api.getDepartures();
+      var rawGroups = await widget.api.getDepartures();
+      if (rawGroups.isEmpty) {
+        final now = DateTime.now();
+        final month = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+        rawGroups = await widget.api.getDepartures(month: month);
+      }
       final rawSos = await widget.api.getSosReports(status: 'received');
       final sosList = rawSos.map((s) => AdminSosAlert.fromJson(s)).toList();
 
