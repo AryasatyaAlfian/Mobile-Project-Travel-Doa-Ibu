@@ -624,6 +624,12 @@ class TravelApi {
     }
   }
 
+  /// Backend: GET /api/v1/documents — melempar error agar UI bisa membedakan kosong vs gagal.
+  Future<List<Map<String, dynamic>>> getDocumentsStrict() async {
+    final json = await client.get('/documents');
+    return (json['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+  }
+
   /// Backend: GET /api/v1/documents — dokumen milik akun yang login.
   Future<List<Map<String, dynamic>>> getDocuments() async {
     try {

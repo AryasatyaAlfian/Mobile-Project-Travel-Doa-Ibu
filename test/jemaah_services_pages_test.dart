@@ -18,6 +18,9 @@ class _FakeApi extends TravelApi {
   Future<List<Map<String, dynamic>>> getDocuments() async => documents;
 
   @override
+  Future<List<Map<String, dynamic>>> getDocumentsStrict() async => documents;
+
+  @override
   Future<List<Map<String, dynamic>>> getDepartures({String? month}) async => groups;
 
   @override
