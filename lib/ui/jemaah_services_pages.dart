@@ -893,6 +893,7 @@ class StaffProfilePage extends StatefulWidget {
 class _StaffProfilePageState extends State<StaffProfilePage> {
   bool _loading = true;
   Map<String, dynamic> _data = const {};
+  List<Map<String, dynamic>> _groups = const [];
 
   @override
   void initState() {
@@ -903,9 +904,11 @@ class _StaffProfilePageState extends State<StaffProfilePage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final data = await widget.api.getProfile();
+    final groups = await widget.api.getDepartures();
     if (!mounted) return;
     setState(() {
       _data = data;
+      _groups = groups;
       _loading = false;
     });
   }
@@ -932,6 +935,14 @@ class _StaffProfilePageState extends State<StaffProfilePage> {
               _InfoRow('Telepon', _text(_data['phone'])),
               _InfoRow('Peran', _text(_data['role']) == 'muthawwif' ? 'Muthawwif' : (_text(_data['role']) == 'admin' ? 'Admin' : _text(_data['role']))),
               _InfoRow('Jemaah bimbingan', _text(_data['guided_jemaah_count'])),
+            ]),
+            _InfoCard(title: 'Grup Bimbingan', children: [
+              if (_groups.isEmpty) const Text('Belum ada grup bimbingan yang ditugaskan.'),
+              for (final g in _groups)
+                _InfoRow(
+                  _text(g['name']),
+                  '${_date(g['departure_date'])} • ${(g['members'] as List?)?.length ?? 0} jemaah',
+                ),
             ]),
             _InfoCard(title: 'Profil Profesional', children: [
               _InfoRow('Spesialisasi', _text(profile['specialization'])),
