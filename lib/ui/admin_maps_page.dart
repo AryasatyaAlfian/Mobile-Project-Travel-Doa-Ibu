@@ -564,8 +564,8 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
         markers.add(
           Marker(
             point: LatLng(group.centerLatitude, group.centerLongitude),
-            width: 90,
-            height: 70,
+            width: 120,
+            height: 74,
             child: Column(
               children: [
                 Container(
@@ -579,11 +579,13 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
                     children: [
                       const Icon(Icons.shield_rounded, size: 10, color: Colors.white),
                       const SizedBox(width: 3),
-                      Text(
+                      Flexible(
+                        child: Text(
                         group.muthawwifName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
                       ),
                     ],
                   ),

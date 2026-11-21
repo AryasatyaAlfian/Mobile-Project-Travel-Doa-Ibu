@@ -57,7 +57,7 @@ class _AdminMuthawwifSheetState extends State<AdminMuthawwifSheet> {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +219,7 @@ class _AdminMuthawwifSheetState extends State<AdminMuthawwifSheet> {
               constraints: const BoxConstraints(maxHeight: 280),
               child: ListView.separated(
                 shrinkWrap: true,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.only(bottom: 80),
                 itemCount: filteredMembers.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
