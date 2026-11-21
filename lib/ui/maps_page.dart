@@ -706,7 +706,7 @@ class _MapsPageState extends State<MapsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _groupId,
+                        _hasAssignment && _groupId.isNotEmpty ? _groupId : 'Belum ada penugasan',
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
