@@ -149,7 +149,7 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
           final matches = tracks.where((g) => g.id == widget.initialGroupId).toList();
           if (matches.isNotEmpty) {
             _selectedGroup = matches.first;
-            _mode = AdminMapsMode.jemaah;
+            _mode = AdminMapsMode.muthawwif;
           }
         }
         _isLoading = false;

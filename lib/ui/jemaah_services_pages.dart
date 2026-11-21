@@ -481,6 +481,7 @@ class DocumentsPage extends StatefulWidget {
 class _DocumentsPageState extends State<DocumentsPage> {
   bool _loading = true;
   bool _uploading = false;
+  bool _error = false;
   List<Map<String, dynamic>> _documents = const [];
 
   @override
@@ -490,13 +491,21 @@ class _DocumentsPageState extends State<DocumentsPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final documents = await widget.api.getDocuments();
-    if (!mounted) return;
-    setState(() {
-      _documents = documents;
-      _loading = false;
-    });
+    setState(() { _loading = true; _error = false; });
+    try {
+      final documents = await widget.api.getDocumentsStrict();
+      if (!mounted) return;
+      setState(() {
+        _documents = documents;
+        _loading = false;
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() { _loading = false; _error = true; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() { _loading = false; _error = true; });
+    }
   }
 
   Future<void> _pickAndUpload() async {
@@ -524,8 +533,15 @@ class _DocumentsPageState extends State<DocumentsPage> {
       allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
       withData: false,
     );
-    final path = picked?.files.single.path;
+    final file = picked?.files.single;
+    final path = file?.path;
     if (path == null || !mounted) return;
+    if ((file!.size) > 10 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ukuran berkas maksimal 10 MB.'), backgroundColor: Color(0xFFB91C1C)),
+      );
+      return;
+    }
     setState(() => _uploading = true);
     try {
       await widget.api.uploadDocument(path, filename: picked!.files.single.name, documentType: type);
@@ -593,7 +609,9 @@ class _DocumentsPageState extends State<DocumentsPage> {
       ],
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+          : _error
+              ? _StateView(icon: Icons.cloud_off_outlined, title: 'Dokumen gagal dimuat', message: 'Periksa koneksi lalu coba lagi. Kelengkapan tidak ditampilkan agar tidak menyesatkan.', actionLabel: 'Coba lagi', onRetry: _load)
+              : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
