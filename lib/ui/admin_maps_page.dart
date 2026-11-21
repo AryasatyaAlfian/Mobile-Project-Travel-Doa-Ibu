@@ -451,7 +451,7 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
         markers.add(
           Marker(
             point: LatLng(g.centerLatitude, g.centerLongitude),
-            width: 70,
+            width: 96,
             height: 82,
             child: GestureDetector(
               onTap: () => _selectGroup(g),
@@ -544,6 +544,9 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
                     ),
                     child: Text(
                       g.code,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w700, color: _ink),
                     ),
                   ),
