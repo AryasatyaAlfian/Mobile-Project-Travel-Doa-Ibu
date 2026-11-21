@@ -680,9 +680,13 @@ class _DepartureHistoryPageState extends State<DepartureHistoryPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final groups = await widget.api.getDepartures(month: _monthKey);
+    final filtered = groups.where((g) {
+      final raw = _text(g['departure_date']);
+      return raw.isEmpty || raw.startsWith(_monthKey);
+    }).toList();
     if (!mounted) return;
     setState(() {
-      _groups = groups;
+      _groups = filtered;
       _loading = false;
     });
   }

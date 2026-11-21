@@ -147,7 +147,10 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
         _sosAlerts = sosList;
         if (widget.initialGroupId != null) {
           final matches = tracks.where((g) => g.id == widget.initialGroupId).toList();
-          if (matches.isNotEmpty) _selectedGroup = matches.first;
+          if (matches.isNotEmpty) {
+            _selectedGroup = matches.first;
+            _mode = AdminMapsMode.jemaah;
+          }
         }
         _isLoading = false;
       });
@@ -449,7 +452,7 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
           Marker(
             point: LatLng(g.centerLatitude, g.centerLongitude),
             width: 70,
-            height: 75,
+            height: 82,
             child: GestureDetector(
               onTap: () => _selectGroup(g),
               child: Column(
