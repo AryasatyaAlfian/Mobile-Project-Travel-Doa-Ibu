@@ -31,7 +31,7 @@ void main() {
           }
           if (request.url.path.contains('/me/tracker')) {
             return http.Response(
-              '{"status":"success","data":{"identity":{"name":"Zara Anselma"},"group":{"code":"AGR8598"}}}',
+              '{"status":"success","data":{"identity":{"name":"Zara Anselma"},"group":{"code":"AGR8598"},"last_location":{"latitude":21.4225,"longitude":39.8262}}}',
               200,
             );
           }
@@ -179,9 +179,6 @@ void main() {
       expect(find.text('Lacak Mutawwif'), findsOneWidget);
       expect(find.text('Ust. Ahmad Fauzi'), findsOneWidget);
       expect(find.text('Gerbang King Abdul Aziz (Gate 1)'), findsOneWidget);
-      expect(find.text('1,2'), findsOneWidget);
-      expect(find.text('15 mnt'), findsWidgets);
-      expect(find.text('Timur Laut'), findsOneWidget);
 
       // Tap Hubungi
       await tester.tap(find.text('Hubungi'));
@@ -200,23 +197,14 @@ void main() {
       expect(find.textContaining('Rute navigasi ke Ust. Ahmad Fauzi'), findsOneWidget);
     });
 
-    testWidgets('Tapping Muthawwif marker on map opens MapsTrackMuthawwifView', (tester) async {
+    testWidgets('Tidak menampilkan marker Muthawwif palsu tanpa data tracker', (tester) async {
       setupScreen(tester);
 
       await tester.pumpWidget(createWidgetUnderTest(MapsPage(api: fakeApi)));
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Temukan marker Muthawwif pada peta (teks 'Mutawaf')
-      final muthawwifMarker = find.text('Mutawaf');
-      expect(muthawwifMarker, findsOneWidget);
-
-      await tester.tap(muthawwifMarker);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-
-      // Verifikasi bottom sheet Lacak Mutawwif terbuka
-      expect(find.byType(MapsTrackMuthawwifView), findsOneWidget);
-      expect(find.text('Gerbang King Abdul Aziz (Gate 1)'), findsOneWidget);
+      expect(find.text('Mutawaf'), findsNothing);
+      expect(find.byType(MapsTrackMuthawwifView), findsNothing);
     });
   });
 }
