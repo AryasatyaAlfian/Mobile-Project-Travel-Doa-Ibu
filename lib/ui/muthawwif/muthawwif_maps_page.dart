@@ -32,6 +32,7 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
   bool _isTrackingMember = false;
   AdminDepartureGroupTrack? _currentGroup;
   AdminTrackingMember? _selectedMember;
+  bool _groupUnavailable = false;
 
   static const Color _ink = Color(0xFF1F1F1F);
   static const Color _gold = Color(0xFFECC485);
@@ -62,7 +63,12 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
   }
 
   Future<void> _loadMuthawwifTrackingData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentGroup = null;
+      _selectedMember = null;
+      _groupUnavailable = false;
+    });
 
     try {
       var rawGroups = await widget.api.getDepartures();
@@ -71,14 +77,31 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
         final month = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
         rawGroups = await widget.api.getDepartures(month: month);
       }
-      final rawSos = await widget.api.getSosReports(status: 'received');
-      final sosList = rawSos.map((s) => AdminSosAlert.fromJson(s)).toList();
-
+      Map<String, dynamic>? selected;
       if (rawGroups.isNotEmpty) {
-        final g = rawGroups.firstWhere(
-          (item) => widget.initialGroupId == null || (item['id'] as num?)?.toInt() == widget.initialGroupId,
-          orElse: () => rawGroups.first,
-        );
+        if (widget.initialGroupId == null) {
+          selected = rawGroups.first;
+        } else {
+          final matches = rawGroups.where(
+            (item) => (item['id'] as num?)?.toInt() == widget.initialGroupId,
+          ).toList();
+          if (matches.isEmpty) {
+            if (mounted) {
+              setState(() {
+                _currentGroup = null;
+                _selectedMember = null;
+                _groupUnavailable = true;
+                _isLoading = false;
+              });
+            }
+            return;
+          }
+          selected = matches.first;
+        }
+      }
+
+      if (selected != null) {
+        final g = selected;
         final id = (g['id'] as num?)?.toInt() ?? 1;
         final pkg = g['package'] as Map<String, dynamic>?;
         final pkgName = (pkg?['name'] as String?) ?? 'Umrah Plus Turki';
@@ -86,7 +109,8 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
         final muthName = (muth?['name'] as String?) ?? 'Ust. Felix Siauw';
         final muthPhone = muth?['phone'] as String?;
 
-        // Ambil data tracker real-time anggota rombongan
+        final rawSos = await widget.api.getSosReports(status: 'received');
+        final sosList = rawSos.map((s) => AdminSosAlert.fromJson(s)).toList();
         final trackerData = await widget.api.getDepartureGroupTracker(id);
         final rawMembers = (trackerData['members'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
@@ -230,10 +254,28 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
       return Scaffold(
         backgroundColor: const Color(0xFFF9F7F2),
         appBar: AppBar(backgroundColor: const Color(0xFFF9F7F2), title: const Text('Peta Lapangan')),
-        body: const Center(
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Belum ada grup bimbingan yang ditugaskan.', textAlign: TextAlign.center),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _groupUnavailable
+                      ? 'Grup tidak tersedia atau akses Anda berubah.'
+                      : 'Belum ada grup bimbingan yang ditugaskan.',
+                  textAlign: TextAlign.center,
+                ),
+                if (_groupUnavailable) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _loadMuthawwifTrackingData,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Coba lagi'),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       );
