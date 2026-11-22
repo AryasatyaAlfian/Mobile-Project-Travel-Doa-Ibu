@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/travel_api.dart';
+import '../services/location_tracking_service.dart';
 import 'maps_my_location_sheet.dart';
 import 'maps_track_muthawwif_view.dart';
 import 'widgets/maps_canvas_view.dart';
@@ -46,14 +47,50 @@ class _MapsPageState extends State<MapsPage> {
   int _sosDurationSeconds = 0;
   bool _isSendingLocation = false;
 
+  LocationTrackingState _locationState = LocationTrackingState.idle;
+  DateTime? _lastFixAt;
+
   @override
   void initState() {
     super.initState();
     _loadUserAndTrackerData();
+    LocationTrackingService.instance.state.addListener(_onLocationStateChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartLocation());
+  }
+
+  void _onLocationStateChanged() {
+    if (!mounted) return;
+    setState(() => _locationState = LocationTrackingService.instance.state.value);
+    final pos = LocationTrackingService.instance.lastPosition.value;
+    if (pos != null) {
+      _currentLat = pos.latitude;
+      _currentLng = pos.longitude;
+      _lastFixAt = DateTime.now();
+      _hasLocation = true;
+    }
+  }
+
+  Future<void> _maybeStartLocation() async {
+    if (widget.api?.client.token == null || LocationTrackingService.instance.isRunning) return;
+    final enable = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Aktifkan lokasi'),
+        content: const Text('Lokasi dipakai untuk keselamatan jemaah dan dikirim berkala saat aplikasi aktif atau di background. Anda bisa menghentikannya lewat pengaturan izin Android.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nanti')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Aktifkan')),
+        ],
+      ),
+    );
+    if (enable == true && mounted) {
+      await LocationTrackingService.instance.start(widget.api!);
+    }
   }
 
   @override
   void dispose() {
+    LocationTrackingService.instance.state.removeListener(_onLocationStateChanged);
     _sosTimer?.cancel();
     super.dispose();
   }
@@ -231,6 +268,39 @@ class _MapsPageState extends State<MapsPage> {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+
+  String get _lastFixAge {
+    final ts = _lastFixAt;
+    if (ts == null) return '';
+    final d = DateTime.now().difference(ts);
+    if (d.inSeconds < 60) return 'baru saja';
+    if (d.inMinutes < 60) return '${d.inMinutes} menit lalu';
+    if (d.inHours < 24) return '${d.inHours} jam lalu';
+    return '${d.inDays} hari lalu';
+  }
+
+  String get _locationHeadline {
+    if (_hasLocation && _lastFixAge.isNotEmpty &&
+        (_locationState == LocationTrackingState.failed ||
+         _locationState == LocationTrackingState.gpsDisabled ||
+         _locationState == LocationTrackingState.permissionDenied)) {
+      return 'Lokasi terakhir · $_lastFixAge';
+    }
+    switch (_locationState) {
+      case LocationTrackingState.permissionDenied:
+        return 'Izin lokasi ditolak';
+      case LocationTrackingState.gpsDisabled:
+        return 'GPS nonaktif';
+      case LocationTrackingState.failed:
+        return 'Lokasi gagal dibaca';
+      case LocationTrackingState.acquiring:
+        return 'Mencari lokasi…';
+      case LocationTrackingState.running:
+        return _currentAddress.isEmpty ? 'Lokasi terbaru diterima' : _currentAddress;
+      case LocationTrackingState.idle:
+        return _currentAddress.isEmpty ? 'Lokasi belum diketahui' : _currentAddress;
+    }
   }
 
   @override
@@ -785,7 +855,7 @@ class _MapsPageState extends State<MapsPage> {
             children: [
               Expanded(
                 child: Text(
-                  _currentAddress.isEmpty ? 'Lokasi belum diketahui' : _currentAddress,
+                  _locationHeadline,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(

@@ -33,6 +33,8 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
   AdminDepartureGroupTrack? _currentGroup;
   AdminTrackingMember? _selectedMember;
   bool _groupUnavailable = false;
+  int? _selectedGroupId;
+  List<Map<String, dynamic>> _groups = const [];
 
   static const Color _ink = Color(0xFF1F1F1F);
   static const Color _gold = Color(0xFFECC485);
@@ -53,6 +55,7 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
   @override
   void initState() {
     super.initState();
+    _selectedGroupId = widget.initialGroupId;
     _loadMuthawwifTrackingData();
 
     if (widget.initialAlert != null) {
@@ -77,13 +80,14 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
         final month = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
         rawGroups = await widget.api.getDepartures(month: month);
       }
+      _groups = rawGroups;
       Map<String, dynamic>? selected;
       if (rawGroups.isNotEmpty) {
-        if (widget.initialGroupId == null) {
+        if (_selectedGroupId == null) {
           selected = rawGroups.first;
         } else {
           final matches = rawGroups.where(
-            (item) => (item['id'] as num?)?.toInt() == widget.initialGroupId,
+            (item) => (item['id'] as num?)?.toInt() == _selectedGroupId,
           ).toList();
           if (matches.isEmpty) {
             if (mounted) {
@@ -236,6 +240,30 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _showGroupPicker() async {
+    if (_groups.isEmpty) return;
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: const Color(0xFFFFF9F0),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(16), child: Text('Pilih grup', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+          for (final g in _groups)
+            ListTile(
+              title: Text('${g['name'] ?? 'Rombongan'}'),
+              subtitle: Text('${g['members'] is List ? (g['members'] as List).length : 0} jemaah'),
+              trailing: (g['id'] as num?)?.toInt() == _currentGroup?.id ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(ctx, (g['id'] as num?)?.toInt()),
+            ),
+        ]),
+      ),
+    );
+    if (selected != null && selected != _currentGroup?.id) {
+      setState(() => _selectedGroupId = selected);
+      await _loadMuthawwifTrackingData();
+    }
   }
 
   @override
@@ -1131,12 +1159,21 @@ class _MuthawwifMapsPageState extends State<MuthawwifMapsPage> {
           const SizedBox(height: 14),
 
           // Header Bottom Sheet
-          Text(
-            'Jemaah Rombongan',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: _ink,
+          InkWell(
+            onTap: _showGroupPicker,
+            child: Row(
+              children: [
+                Text(
+                  'Jemaah Rombongan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.expand_more, size: 18),
+              ],
             ),
           ),
           const SizedBox(height: 2),

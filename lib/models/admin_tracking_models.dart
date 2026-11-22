@@ -206,6 +206,17 @@ class AdminTrackingMember {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
+  /// Usia lokasi terakhir, dibedakan dari indikator live.
+  String get locationAgeLabel {
+    final ts = updatedAt;
+    if (ts == null) return 'Waktu lokasi belum tersedia';
+    final d = DateTime.now().difference(ts.toLocal());
+    if (d.inSeconds < 60) return 'Baru diperbarui';
+    if (d.inMinutes < 60) return '${d.inMinutes} menit lalu';
+    if (d.inHours < 24) return '${d.inHours} jam lalu';
+    return '${d.inDays} hari lalu';
+  }
+
   /// Status radius aman: aman bila jarak <= 2000 meter.
   bool get isOutOfRadius =>
       distanceToMuthawwifMeters != null && distanceToMuthawwifMeters! > 2000.0;

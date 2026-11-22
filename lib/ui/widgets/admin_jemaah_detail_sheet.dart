@@ -203,11 +203,15 @@ class AdminJemaahDetailSheet extends StatelessWidget {
                     const SizedBox(height: 1),
                     Row(
                       children: [
-                        Text(
-                          '${group.city} · 1 mnt lalu',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
+                        Flexible(
+                          child: Text(
+                            '${group.city} · ${member.locationAgeLabel}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
