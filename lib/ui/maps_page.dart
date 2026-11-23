@@ -307,6 +307,52 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
+  Widget _buildPeerListCard() {
+    final peers = _peerMembers
+        .where((p) => p['identity'] is Map && p['last_location'] is Map)
+        .take(4)
+        .toList();
+    if (peers.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Anggota grup', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+          const SizedBox(height: 6),
+          ...peers.map((p) {
+            final name = (p['identity']['name'] as String? ?? '').trim();
+            final updated = p['last_location']['updated_at'] as String?;
+            final age = updated == null ? 'waktu belum tersedia' : _peerAgeLabel(updated);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(children: [
+                const Icon(Icons.person_pin_circle, size: 16, color: Color(0xFF1F2937)),
+                const SizedBox(width: 6),
+                Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                Text(age, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+              ]),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  String _peerAgeLabel(String iso) {
+    final t = DateTime.tryParse(iso);
+    if (t == null) return 'waktu belum tersedia';
+    final diff = DateTime.now().difference(t.toLocal());
+    if (diff.inMinutes < 1) return 'baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} mnt lalu';
+    return '${diff.inHours} jam lalu';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -347,6 +393,14 @@ class _MapsPageState extends State<MapsPage> {
                 peerMembers: _peerMembers,
               ),
             ),
+
+            if (_peerMembers.isNotEmpty)
+              Positioned(
+                top: 116,
+                left: 16,
+                right: 16,
+                child: _buildPeerListCard(),
+              ),
 
             // 2. Top Header (SOS Mode vs Normal Mode Sesuai Figma 1:1)
             Positioned(
