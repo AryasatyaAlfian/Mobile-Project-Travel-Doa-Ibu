@@ -65,7 +65,20 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
-    )..repeat();
+    );
+    if (widget.isSosActive) {
+      _pulseController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MapsCanvasView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSosActive && !_pulseController.isAnimating) {
+      _pulseController.repeat();
+    } else if (!widget.isSosActive && _pulseController.isAnimating) {
+      _pulseController.stop();
+    }
   }
 
   @override
