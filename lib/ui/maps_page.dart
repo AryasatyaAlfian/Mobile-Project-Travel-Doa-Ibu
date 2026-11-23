@@ -39,6 +39,7 @@ class _MapsPageState extends State<MapsPage> {
   String _userName = 'Zara';
   String _groupId = '';
   String _muthawwifName = '';
+  List<Map<String, dynamic>> _peerMembers = const [];
   bool _hasAssignment = false;
 
   // State SOS & Timer
@@ -114,6 +115,9 @@ class _MapsPageState extends State<MapsPage> {
           if (idData['name'] != null) {
             _userName = (idData['name'] as String).split(' ').first;
           }
+        }
+        if (tracker['members'] is List) {
+          _peerMembers = (tracker['members'] as List).cast<Map<String, dynamic>>();
         }
         if (tracker['group'] != null) {
           final grp = tracker['group'] as Map<String, dynamic>;
@@ -340,6 +344,7 @@ class _MapsPageState extends State<MapsPage> {
                 },
                 userLat: _currentLat,
                 userLng: _currentLng,
+                peerMembers: _peerMembers,
               ),
             ),
 

@@ -17,6 +17,7 @@ class MapsCanvasView extends StatefulWidget {
   final double userLng;
   final double muthawwifLat;
   final double muthawwifLng;
+  final List<Map<String, dynamic>> peerMembers;
 
   const MapsCanvasView({
     super.key,
@@ -29,6 +30,7 @@ class MapsCanvasView extends StatefulWidget {
     this.userLng = 39.8246,
     this.muthawwifLat = 21.4208,
     this.muthawwifLng = 39.8258,
+    this.peerMembers = const [],
   });
 
   @override
@@ -150,6 +152,44 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
             // Marker Layer (Ka'bah, Mutawwif, Jemaah, Radius, SOS)
             MarkerLayer(
               markers: [
+                for (final peer in widget.peerMembers)
+                  if (peer['last_location'] is Map &&
+                      peer['last_location']['latitude'] != null &&
+                      peer['last_location']['longitude'] != null)
+                    Marker(
+                      point: LatLng(
+                        (peer['last_location']['latitude'] as num).toDouble(),
+                        (peer['last_location']['longitude'] as num).toDouble(),
+                      ),
+                      width: 64,
+                      height: 64,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1F2937),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                (peer['identity']?['name'] as String? ?? 'J')
+                                    .trim()
+                                    .split(RegExp(r'\s+'))
+                                    .take(2)
+                                    .map((e) => e.isEmpty ? '' : e[0])
+                                    .join()
+                                    .toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 // Marker Ka'bah di Masjidil Haram
                 Marker(
                   point: _kabahCoord,
