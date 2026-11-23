@@ -78,7 +78,7 @@ void main() {
       // Verifikasi komponen peta & header
       expect(find.byType(MapsCanvasView), findsOneWidget);
       expect(find.text('Hi, Zara'), findsOneWidget);
-      expect(find.text('Live Tracking'), findsOneWidget);
+      expect(find.text('Menunggu lokasi'), findsOneWidget);
       expect(find.text('Check In'), findsOneWidget);
       expect(find.text('SOS'), findsOneWidget);
 

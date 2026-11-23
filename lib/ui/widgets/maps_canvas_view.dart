@@ -18,6 +18,7 @@ class MapsCanvasView extends StatefulWidget {
   final double muthawwifLat;
   final double muthawwifLng;
   final List<Map<String, dynamic>> peerMembers;
+  final void Function(Map<String, dynamic> peer)? onTapPeer;
 
   const MapsCanvasView({
     super.key,
@@ -31,6 +32,7 @@ class MapsCanvasView extends StatefulWidget {
     this.muthawwifLat = 21.4208,
     this.muthawwifLng = 39.8258,
     this.peerMembers = const [],
+    this.onTapPeer,
   });
 
   @override
@@ -74,6 +76,29 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
   @override
   void didUpdateWidget(covariant MapsCanvasView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.peerMembers.isNotEmpty &&
+        !identical(oldWidget.peerMembers, widget.peerMembers)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final points = <LatLng>[_userCoord];
+        for (final peer in widget.peerMembers) {
+          final loc = peer['last_location'];
+          if (loc is Map && loc['latitude'] != null && loc['longitude'] != null) {
+            points.add(LatLng(
+              (loc['latitude'] as num).toDouble(),
+              (loc['longitude'] as num).toDouble(),
+            ));
+          }
+        }
+        final lat = points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
+        final lng = points.map((p) => p.longitude).reduce((a, b) => a + b) / points.length;
+        try {
+          _mapController.move(LatLng(lat, lng), 15.2);
+        } catch (_) {
+          // Peta belum siap; posisi awal tetap dipakai.
+        }
+      });
+    }
     if (widget.isSosActive && !_pulseController.isAnimating) {
       _pulseController.repeat();
     } else if (!widget.isSosActive && _pulseController.isAnimating) {
@@ -176,7 +201,9 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
                       ),
                       width: 64,
                       height: 64,
-                      child: Column(
+                      child: GestureDetector(
+                        onTap: () => widget.onTapPeer?.call(peer),
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
@@ -201,6 +228,7 @@ class _MapsCanvasViewState extends State<MapsCanvasView> with SingleTickerProvid
                             ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                 // Marker Ka'bah di Masjidil Haram

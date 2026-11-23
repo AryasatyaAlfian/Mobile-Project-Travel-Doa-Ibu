@@ -133,6 +133,10 @@ class _MapsPageState extends State<MapsPage> {
             _currentLat = (loc['latitude'] as num).toDouble();
             _currentLng = (loc['longitude'] as num).toDouble();
             _hasLocation = true;
+            final updatedAt = loc['updated_at'] ?? loc['received_at'] ?? loc['recorded_at'];
+            if (updatedAt is String) {
+              _lastFixAt ??= DateTime.tryParse(updatedAt)?.toLocal();
+            }
             _currentCoords =
                 '${_currentLat.toStringAsFixed(4)}° N, ${_currentLng.toStringAsFixed(4)}° E';
           }
@@ -284,7 +288,24 @@ class _MapsPageState extends State<MapsPage> {
     return '${d.inDays} hari lalu';
   }
 
+  bool get _isLive {
+    final ts = _lastFixAt;
+    return _hasLocation &&
+        ts != null &&
+        DateTime.now().difference(ts).inSeconds < 60 &&
+        _locationState == LocationTrackingState.running;
+  }
+
+  String get _liveLabel {
+    if (_isLive) return 'Live Tracking';
+    if (_lastFixAge.isNotEmpty) return 'Terakhir · $_lastFixAge';
+    return 'Menunggu lokasi';
+  }
+
   String get _locationHeadline {
+    if (_hasLocation && _lastFixAt != null && !_isLive && _lastFixAge.isNotEmpty) {
+      return 'Lokasi terakhir · $_lastFixAge';
+    }
     if (_hasLocation && _lastFixAge.isNotEmpty &&
         (_locationState == LocationTrackingState.failed ||
          _locationState == LocationTrackingState.gpsDisabled ||
@@ -305,6 +326,36 @@ class _MapsPageState extends State<MapsPage> {
       case LocationTrackingState.idle:
         return _currentAddress.isEmpty ? 'Lokasi belum diketahui' : _currentAddress;
     }
+  }
+
+  void _showPeerDetail(Map<String, dynamic> peer) {
+    final name = (peer['identity']?['name'] as String? ?? '').trim();
+    final loc = peer['last_location'];
+    final lat = loc is Map ? loc['latitude'] : null;
+    final lng = loc is Map ? loc['longitude'] : null;
+    final updated = loc is Map ? loc['updated_at'] as String? : null;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(lat == null || lng == null
+                ? 'Lokasi belum tersedia'
+                : '${(lat as num).toStringAsFixed(4)}, ${(lng as num).toStringAsFixed(4)}'),
+            const SizedBox(height: 4),
+            Text(updated == null ? 'Waktu belum tersedia' : _peerAgeLabel(updated),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildPeerListCard() {
@@ -391,6 +442,7 @@ class _MapsPageState extends State<MapsPage> {
                 userLat: _currentLat,
                 userLng: _currentLng,
                 peerMembers: _peerMembers,
+                onTapPeer: _showPeerDetail,
               ),
             ),
 
@@ -929,17 +981,17 @@ class _MapsPageState extends State<MapsPage> {
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: _hasAssignment ? _green : _muted,
+                  color: _isLive ? _green : _muted,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
-                _hasAssignment ? 'Live Tracking' : 'Belum ada penugasan',
+                _liveLabel,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: _hasAssignment ? _green : _muted,
+                  color: _isLive ? _green : _muted,
                 ),
               ),
             ],
