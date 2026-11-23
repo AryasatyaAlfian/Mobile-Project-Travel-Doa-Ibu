@@ -77,6 +77,8 @@ void main() {
         name: 'Siti Aminah',
         locationText: 'Dekat Gate 79',
         distanceToMuthawwifMeters: 650,
+        latitude: 21.4225,
+        longitude: 39.8262,
       );
       expect(safeMember.initials, equals('SA'));
       expect(safeMember.isOutOfRadius, isFalse);
@@ -87,6 +89,8 @@ void main() {
         name: 'Rina Kartika',
         locationText: 'Ajyad',
         distanceToMuthawwifMeters: 2400,
+        latitude: 21.4300,
+        longitude: 39.8400,
       );
       expect(outMember.initials, equals('RK'));
       expect(outMember.isOutOfRadius, isTrue);

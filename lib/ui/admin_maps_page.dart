@@ -929,6 +929,18 @@ class _AdminMapsPageState extends State<AdminMapsPage> {
   }
 
   Widget _buildRadiusSafetyPill(AdminTrackingMember member) {
+    if (!member.hasLocation) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: const Text('Status lokasi belum tersedia',
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+      );
+    }
     final bool isSafe = !member.isOutOfRadius;
     final color = isSafe ? const Color(0xFF4CAF50) : const Color(0xFFE65100);
     final text = isSafe

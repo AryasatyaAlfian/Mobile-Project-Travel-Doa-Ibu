@@ -217,6 +217,9 @@ class AdminTrackingMember {
     return '${d.inDays} hari lalu';
   }
 
+  /// Apakah anggota memiliki koordinat lokasi yang valid.
+  bool get hasLocation => latitude != null && longitude != null;
+
   /// Status radius aman: aman bila jarak <= 2000 meter.
   bool get isOutOfRadius =>
       distanceToMuthawwifMeters != null && distanceToMuthawwifMeters! > 2000.0;
@@ -224,6 +227,7 @@ class AdminTrackingMember {
   /// Keterangan status lokasi ("Aman", "Di luar · 2,4 km", "SOS").
   String get statusBadgeLabel {
     if (hasActiveSos) return 'SOS';
+    if (!hasLocation) return 'Belum tersedia';
     if (isOutOfRadius && distanceToMuthawwifMeters != null) {
       return 'Di luar · ${GeodesicHelper.formatDistance(distanceToMuthawwifMeters!)}';
     }

@@ -30,14 +30,17 @@ class AdminJemaahDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double distMeters = member.distanceToMuthawwifMeters ?? 1200.0;
-    final String straightDistStr = GeodesicHelper.formatDistance(distMeters);
-    final int walkMin = GeodesicHelper.estimateWalkingMinutes(distMeters);
+    final bool hasDistance = member.distanceToMuthawwifMeters != null;
+    final double distMeters = member.distanceToMuthawwifMeters ?? 0;
+    final String straightDistStr = hasDistance ? GeodesicHelper.formatDistance(distMeters) : 'Tidak tersedia';
+    final String walkMinStr = hasDistance ? '${GeodesicHelper.estimateWalkingMinutes(distMeters)} mnt' : 'Tidak tersedia';
     final double routeKm = (distMeters * 1.25) / 1000.0;
-    final String routeDistStr = '${routeKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+    final String routeDistStr = hasDistance
+        ? '${routeKm.toStringAsFixed(1).replaceAll('.', ',')} km'
+        : 'Tidak tersedia';
 
-    // Arah kompas dari koordinat jemaah ke muthawwif
-    String directionStr = 'Timur Laut';
+    // Arah kompas hanya dihitung bila kedua titik benar-benar tersedia.
+    String directionStr = 'Tidak tersedia';
     if (member.latitude != null &&
         member.longitude != null &&
         group.muthawwifLat != null &&
@@ -66,7 +69,7 @@ class AdminJemaahDetailSheet extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, isMuthawwif ? 85 : 20),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 110),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,14 +227,15 @@ class AdminJemaahDetailSheet extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Live',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4CAF50),
+                        if (member.latitude != null && member.longitude != null)
+                          Text(
+                            'Live',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4CAF50),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -328,7 +332,7 @@ class AdminJemaahDetailSheet extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildMetricCol(
-                        value: '$walkMin mnt',
+                        value: walkMinStr,
                         label: 'Jalan kaki',
                       ),
                     ),
@@ -370,7 +374,7 @@ class AdminJemaahDetailSheet extends StatelessWidget {
                     ? _buildDarkActionButton(
                         icon: Icons.navigation_rounded,
                         title: 'Petunjuk Arah',
-                        subtitle: '$routeDistStr · $walkMin mnt',
+                        subtitle: '$routeDistStr · $walkMinStr',
                         onTap: onDirections ?? onCallMuthawwif,
                       )
                     : _buildDarkActionButton(

@@ -17,3 +17,9 @@
 - MFE-012/015/018/019/020/025/026 -> Notion In Review; MFE-013/014 In Progress; MBE-014 In Review.
 - Map: OSM tiles blank in emulator; markers/list render after recenter; peer list verified with Nadia+Zara.
 - Smoothness: removed continuous pulse animation when SOS inactive; profiling via gfxinfo limited (emulator high jank baseline).
+
+## Candidate 2E43DCC
+- APK 2E43DCC618DC26A17CCBF02C34649B3B3C0567D3A33D188444632DE0EBC1A027; 188825904 B; tests 286/286; analyze 0 error/2 info.
+- Live label now only when fix <60s; stale shows "Lokasi terakhir · X" / "Terakhir · X".
+- Camera fits peers on async member load; peer marker NP and panel visible; permission system dialog captured.
+- MFE-013 API: Felix group1 tracker 200; group3 403.
