@@ -28,6 +28,7 @@ class LocationTrackingService {
   final ValueNotifier<Position?> lastPosition = ValueNotifier<Position?>(null);
   final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
   final ValueNotifier<Position?> lastFix = ValueNotifier<Position?>(null);
+  final ValueNotifier<DateTime?> lastServerAt = ValueNotifier<DateTime?>(null);
 
   StreamSubscription<Position>? _subscription;
   StreamSubscription<ServiceStatus>? _serviceSubscription;
@@ -133,6 +134,11 @@ class LocationTrackingService {
         throw StateError('Server tidak mengonfirmasi penerimaan lokasi.');
       }
       lastSentAt.value = DateTime.now();
+      final ack = response['received_at'] ?? response['updated_at'] ?? response['recorded_at'];
+      if (ack is String) {
+        final parsed = DateTime.tryParse(ack)?.toLocal();
+        if (parsed != null) lastServerAt.value = parsed;
+      }
       lastError.value = null;
     } catch (e) {
       lastError.value = e.toString();

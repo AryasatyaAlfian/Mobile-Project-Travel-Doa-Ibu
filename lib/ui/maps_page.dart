@@ -57,6 +57,7 @@ class _MapsPageState extends State<MapsPage> {
     _loadUserAndTrackerData();
     LocationTrackingService.instance.state.addListener(_onLocationStateChanged);
     LocationTrackingService.instance.lastPosition.addListener(_onPositionUpdated);
+    LocationTrackingService.instance.lastServerAt.addListener(_onServerAck);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartLocation());
   }
 
@@ -72,9 +73,15 @@ class _MapsPageState extends State<MapsPage> {
     setState(() {
       _currentLat = pos.latitude;
       _currentLng = pos.longitude;
-      _lastFixAt = pos.timestamp.toLocal();
       _hasLocation = true;
     });
+  }
+
+  void _onServerAck() {
+    if (!mounted) return;
+    final ack = LocationTrackingService.instance.lastServerAt.value;
+    if (ack == null) return;
+    setState(() => _lastFixAt = ack);
   }
 
   Future<void> _maybeStartLocation() async {
@@ -99,6 +106,7 @@ class _MapsPageState extends State<MapsPage> {
   void dispose() {
     LocationTrackingService.instance.state.removeListener(_onLocationStateChanged);
     LocationTrackingService.instance.lastPosition.removeListener(_onPositionUpdated);
+    LocationTrackingService.instance.lastServerAt.removeListener(_onServerAck);
     _sosTimer?.cancel();
     super.dispose();
   }
@@ -142,7 +150,7 @@ class _MapsPageState extends State<MapsPage> {
             _hasLocation = true;
             final updatedAt = loc['updated_at'] ?? loc['received_at'] ?? loc['recorded_at'];
             if (updatedAt is String) {
-              _lastFixAt ??= DateTime.tryParse(updatedAt)?.toLocal();
+              _lastFixAt = DateTime.tryParse(updatedAt)?.toLocal() ?? _lastFixAt;
             }
             _currentCoords =
                 '${_currentLat.toStringAsFixed(4)}° N, ${_currentLng.toStringAsFixed(4)}° E';
