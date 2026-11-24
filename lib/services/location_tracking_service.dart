@@ -27,6 +27,7 @@ class LocationTrackingService {
   final ValueNotifier<DateTime?> lastSentAt = ValueNotifier<DateTime?>(null);
   final ValueNotifier<Position?> lastPosition = ValueNotifier<Position?>(null);
   final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
+  final ValueNotifier<Position?> lastFix = ValueNotifier<Position?>(null);
 
   StreamSubscription<Position>? _subscription;
   TravelApi? _api;
@@ -93,7 +94,6 @@ class LocationTrackingService {
           ),
         ),
       ).listen(_onPosition, onError: _onStreamError, cancelOnError: false);
-      state.value = LocationTrackingState.running;
     } catch (e) {
       lastError.value = e.toString();
       state.value = LocationTrackingState.failed;
@@ -105,19 +105,25 @@ class LocationTrackingService {
 
   Future<void> _onPosition(Position position) async {
     lastPosition.value = position;
-    state.value = LocationTrackingState.running;
+    lastFix.value = position;
+    if (state.value != LocationTrackingState.running) {
+      state.value = LocationTrackingState.running;
+    }
     final now = DateTime.now();
     if (_lastAttempt != null && now.difference(_lastAttempt!) < const Duration(seconds: 15)) {
       return;
     }
     _lastAttempt = now;
     try {
-      await _api?.sendLocation(
+      final response = await _api?.sendLocation(
         latitude: position.latitude,
         longitude: position.longitude,
         accuracyM: position.accuracy,
         recordedAt: position.timestamp,
       );
+      if (response == null || response.isEmpty) {
+        throw StateError('Server tidak mengonfirmasi penerimaan lokasi.');
+      }
       lastSentAt.value = DateTime.now();
       lastError.value = null;
     } catch (e) {

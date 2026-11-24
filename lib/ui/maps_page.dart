@@ -56,19 +56,25 @@ class _MapsPageState extends State<MapsPage> {
     super.initState();
     _loadUserAndTrackerData();
     LocationTrackingService.instance.state.addListener(_onLocationStateChanged);
+    LocationTrackingService.instance.lastPosition.addListener(_onPositionUpdated);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartLocation());
   }
 
   void _onLocationStateChanged() {
     if (!mounted) return;
     setState(() => _locationState = LocationTrackingService.instance.state.value);
+  }
+
+  void _onPositionUpdated() {
+    if (!mounted) return;
     final pos = LocationTrackingService.instance.lastPosition.value;
-    if (pos != null) {
+    if (pos == null) return;
+    setState(() {
       _currentLat = pos.latitude;
       _currentLng = pos.longitude;
-      _lastFixAt = DateTime.now();
+      _lastFixAt = pos.timestamp.toLocal();
       _hasLocation = true;
-    }
+    });
   }
 
   Future<void> _maybeStartLocation() async {
@@ -92,6 +98,7 @@ class _MapsPageState extends State<MapsPage> {
   @override
   void dispose() {
     LocationTrackingService.instance.state.removeListener(_onLocationStateChanged);
+    LocationTrackingService.instance.lastPosition.removeListener(_onPositionUpdated);
     _sosTimer?.cancel();
     super.dispose();
   }

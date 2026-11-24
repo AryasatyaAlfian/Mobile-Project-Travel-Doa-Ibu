@@ -352,8 +352,8 @@ class TravelApi {
         'recorded_at': (recordedAt ?? DateTime.now()).toUtc().toIso8601String(),
       });
       return (json['data'] ?? json) as Map<String, dynamic>;
-    } catch (_) {
-      return {};
+    } on ApiException {
+      rethrow;
     }
   }
 
