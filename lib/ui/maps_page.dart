@@ -453,14 +453,6 @@ class _MapsPageState extends State<MapsPage> {
               ),
             ),
 
-            if (_peerMembers.isNotEmpty)
-              Positioned(
-                top: 116,
-                left: 16,
-                right: 16,
-                child: _buildPeerListCard(),
-              ),
-
             // 2. Top Header (SOS Mode vs Normal Mode Sesuai Figma 1:1)
             Positioned(
               top: 0,
@@ -1009,6 +1001,10 @@ class _MapsPageState extends State<MapsPage> {
               'Coordinates: $_currentCoords',
               style: GoogleFonts.poppins(fontSize: 10, color: _muted),
             ),
+          if (_peerMembers.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _buildPeerListCard(),
+          ],
         ],
       ),
     );

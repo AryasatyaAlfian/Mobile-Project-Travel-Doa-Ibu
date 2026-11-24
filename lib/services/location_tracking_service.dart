@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' hide ServiceStatus;
 
 import 'travel_api.dart';
 
@@ -30,6 +30,7 @@ class LocationTrackingService {
   final ValueNotifier<Position?> lastFix = ValueNotifier<Position?>(null);
 
   StreamSubscription<Position>? _subscription;
+  StreamSubscription<ServiceStatus>? _serviceSubscription;
   TravelApi? _api;
   bool _starting = false;
   DateTime? _lastAttempt;
@@ -79,6 +80,13 @@ class LocationTrackingService {
         await _reportStatus('permission_denied');
         return;
       }
+      _serviceSubscription ??= Geolocator.getServiceStatusStream().listen((status) {
+        if (status == ServiceStatus.disabled) {
+          state.value = LocationTrackingState.gpsDisabled;
+        } else if (isRunning) {
+          state.value = LocationTrackingState.running;
+        }
+      });
       _subscription = Geolocator.getPositionStream(
         locationSettings: AndroidSettings(
           accuracy: LocationAccuracy.bestForNavigation,
@@ -145,7 +153,9 @@ class LocationTrackingService {
 
   Future<void> stop() async {
     await _subscription?.cancel();
+    await _serviceSubscription?.cancel();
     _subscription = null;
+    _serviceSubscription = null;
     state.value = LocationTrackingState.idle;
   }
 }
